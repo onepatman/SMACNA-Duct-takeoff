@@ -1,0 +1,15 @@
+{
+  "name": "SMACNA Duct Takeoff Calculator",
+  "short_name": "SMACNA Takeoff",
+  "description": "SMACNA rectangular duct material takeoff calculator — offline-capable engineering tool for HVAC/MEPF estimating.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#F4F6F8",
+  "theme_color": "#0D1B2A",
+  "icons": [
+    { "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SMACNA Duct Takeoff — Engineering Calculator</title>
+<meta name="description" content="SMACNA rectangular duct material takeoff calculator — installable offline engineering tool.">
+<meta name="theme-color" content="#0D1B2A">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icons/favicon.png">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<link rel="stylesheet" href="./css/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+
+<div class="top-bar">
+  <button id="install-btn" class="install-btn" disabled>⬇ Install App</button>
+  <h1>RECTANGULAR DUCT MATERIAL TAKEOFF <span class="offline-pill">OFFLINE</span></h1>
+  <div class="sub">SMACNA HVAC Duct Construction Standards — 3rd Ed. | Low Pressure Class, Max 2 in. w.g. (500 Pa) | Rectangular Galvanized Sheet Metal Ductwork</div>
+  <span class="badge-pill">Philippine PSME Code Compliant</span>
+  <span class="badge-pill">Form: ME-DUCT-001</span>
+</div>
+
+<div class="tabs no-print">
+  <button class="tab-btn active" onclick="showTab(0)">1 · Project &amp; Assumptions</button>
+  <button class="tab-btn" onclick="showTab(1)">2 · Duct Takeoff Calculator</button>
+  <button class="tab-btn" onclick="showTab(2)">3 · Gauge Reference (Table 1-7)</button>
+  <button class="tab-btn" onclick="showTab(3)">4 · Formula Reference</button>
+</div>
+
+<!-- ================= TAB 1 : PROJECT + ASSUMPTIONS ================= -->
+<div class="tab-content active" id="tab-0">
+
+  <div class="section-header"><span class="badge">1</span> PROJECT INFORMATION</div>
+  <div class="proj-grid">
+    <div class="proj-field"><label>PROJECT</label><input type="text" id="p-project" placeholder="Project name"></div>
+    <div class="proj-field"><label>DATE</label><input type="text" id="p-date" placeholder="e.g. 23 July 2026"></div>
+    <div class="proj-field"><label>REFERENCE</label><input type="text" id="p-ref" placeholder="Drawing / spec reference"></div>
+    <div class="proj-field"><label>PREPARED BY</label><input type="text" id="p-prep" placeholder="Name"></div>
+    <div class="proj-field"><label>LOCATION</label><input type="text" id="p-loc" placeholder="Site location"></div>
+    <div class="proj-field"><label>CHECKED BY</label><input type="text" id="p-check" placeholder="Name"></div>
+    <div class="proj-field"><label>REVISION</label><input type="text" id="p-rev" placeholder="Rev. 0"></div>
+    <div class="proj-field"><label>SHEET</label><input type="text" id="p-sheet" value="Sheet 1 of 1"></div>
+  </div>
+
+  <div class="section-header"><span class="badge">2</span> MATERIAL COVERAGE ASSUMPTIONS</div>
+  <div class="legend-box">
+    <span class="legend-swatch" style="background:#FFF8DE;border:1px solid #C9A227"></span> Yellow = fill / editable &nbsp;&nbsp;
+    <span class="legend-swatch" style="background:#fff;border:1px solid #CFD8DC"></span> White = auto-calculated, do not edit &nbsp;&nbsp;
+    <span class="legend-swatch" style="background:#E3F2FD;border:1px solid #CFD8DC"></span> Blue = section totals &nbsp;&nbsp;
+    All formulas in Tab 2 reference this table — change a rate here and the entire calculator updates live.
+  </div>
+  <table class="assump-table">
+    <tr><th>Ref.</th><th>Rate Value</th><th>Unit</th><th>Description</th><th>Code / Source</th></tr>
+    <tbody id="assump-body"></tbody>
+  </table>
+
+  <div class="ok-box">Tip: leave these at SMACNA defaults unless your project specs, product TDS, or house rules call for a different coverage rate.</div>
+</div>
+
+<!-- ================= TAB 2 : TAKEOFF CALCULATOR ================= -->
+<div class="tab-content" id="tab-1">
+
+  <div class="section-header"><span class="badge">1</span> DUCT IDENTIFICATION &amp; GEOMETRY</div>
+  <div class="legend-box">Enter <b>Width</b> and <b>Depth</b> in millimeters and <b>Length</b> in meters for each duct run. Gauge, materials, and hangers compute automatically per SMACNA Table 1-7 and Table 4-1.</div>
+
+  <div class="action-bar no-print">
+    <button class="btn btn-add" onclick="addRow()">+ Add Duct Run</button>
+    <button class="btn btn-clear" onclick="clearAllRows()">Clear All Rows</button>
+    <button class="btn btn-pdf" onclick="window.print()">🖶 Save as PDF</button>
+    <button class="btn btn-xlsx" onclick="exportExcel()">⬇ Download Excel (.xlsx)</button>
+  </div>
+
+  <div class="formula-box">
+    <b>Core formulas used per run:</b><br>
+    Perimeter (m) = 2 × (Width÷1000 + Depth÷1000) &nbsp;|&nbsp; Area (sq m) = Perimeter × Length<br>
+    Gauge = SMACNA T1-7 bracket of MAX(Width, Depth) &nbsp;|&nbsp; Hangers = ROUNDUP(Length ÷ 2.4 + 1, 0)
+  </div>
+
+  <div class="table-scroll">
+  <table class="takeoff">
+    <thead>
+      <tr>
+        <th class="grp-geo" colspan="5">DUCT GEOMETRY (fill)</th>
+        <th class="grp-dim" colspan="2">COMPUTED DIMENSIONS</th>
+        <th class="grp-gauge" colspan="6">SHEET METAL BY GAUGE (sq m) — SMACNA T1-7</th>
+        <th class="grp-ins" colspan="7">INSULATION &amp; ACCESSORIES</th>
+        <th class="grp-hng" colspan="5">HANGER SUPPORT HARDWARE</th>
+        <th class="grp-wt" colspan="1">EST. WEIGHT</th>
+        <th class="grp-act" colspan="1"></th>
+      </tr>
+      <tr>
+        <th>Run</th><th>Type</th><th>Width<br>mm</th><th>Depth<br>mm</th><th>Length<br>m</th>
+        <th>Perimeter<br>m</th><th>Area<br>sq m</th>
+        <th>ga 26<br>sq m</th><th>ga 24<br>sq m</th><th>ga 22<br>sq m</th><th>ga 20<br>sq m</th><th>ga 18<br>sq m</th><th>ga 16<br>sq m</th>
+        <th>Insul.<br>sq m</th><th>Sealant<br>gal</th><th>Adhesive<br>gal</th><th>Duct Pin<br>pcs</th><th>Duct Tape<br>rolls</th><th>Strap<br>rolls</th><th>Corner<br>sq m</th>
+        <th>Angle<br>m</th><th>Rod<br>m</th><th>Cnc Insert<br>pcs</th><th>Nuts<br>pcs</th><th>Washers<br>pcs</th>
+        <th>kg</th><th></th>
+      </tr>
+    </thead>
+    <tbody id="takeoff-body"></tbody>
+    <tfoot>
+      <tr class="totals-row">
+        <td colspan="7" style="text-align:right">GRAND TOTALS →</td>
+        <td id="t-ga26">0</td><td id="t-ga24">0</td><td id="t-ga22">0</td><td id="t-ga20">0</td><td id="t-ga18">0</td><td id="t-ga16">0</td>
+        <td id="t-ins">0</td><td id="t-seal">0</td><td id="t-adh">0</td><td id="t-pin">0</td><td id="t-tape">0</td><td id="t-strap">0</td><td id="t-corner">0</td>
+        <td id="t-angle">0</td><td id="t-rod">0</td><td id="t-insert">0</td><td id="t-nuts">0</td><td id="t-wash">0</td>
+        <td id="t-weight">0</td><td></td>
+      </tr>
+      <tr class="waste-row">
+        <td colspan="7" style="text-align:right">+ 20% Waste Factor →</td>
+        <td id="w-ga26">0</td><td id="w-ga24">0</td><td id="w-ga22">0</td><td id="w-ga20">0</td><td id="w-ga18">0</td><td id="w-ga16">0</td>
+        <td id="w-ins">0</td><td id="w-seal">0</td><td id="w-adh">0</td><td id="w-pin">0</td><td id="w-tape">0</td><td id="w-strap">0</td><td id="w-corner">0</td>
+        <td id="w-angle">0</td><td id="w-rod">0</td><td id="w-insert">0</td><td id="w-nuts">0</td><td id="w-wash">0</td>
+        <td id="w-weight">0</td><td></td>
+      </tr>
+    </tfoot>
+  </table>
+  </div>
+
+  <div class="warning-box" id="incomplete-warning" style="display:none">⚠ Rows highlighted in red are missing Width, Depth, or Length and are excluded from totals until completed.</div>
+
+  <div class="section-header"><span class="badge">2</span> SUMMARY</div>
+  <div class="result-box">TOTAL DUCT SURFACE AREA: <span id="sum-area">0</span> sq m</div>
+  <div class="result-box">TOTAL SHEET METAL WEIGHT (incl. 20% waste): <span id="sum-weight">0</span> kg</div>
+  <div class="result-box">TOTAL HANGER POINTS (approx.): <span id="sum-hangers">0</span> pts</div>
+  <div class="ok-box" id="rows-ok">0 duct run(s) computed. Totals and 20% waste allowance update live as you edit any cell above.</div>
+</div>
+
+<!-- ================= TAB 3 : GAUGE REFERENCE ================= -->
+<div class="tab-content" id="tab-2">
+  <div class="section-header"><span class="badge">1</span> GAUGE SELECTION TABLE — SMACNA Table 1-7 (Low Pressure Class)</div>
+  <div class="legend-box">Gauge is selected by the <b>LONGER side</b> = MAX(Width, Depth). Boundaries below are extended through <b>ga 16</b> (&gt;3050 mm) — the source workbook's gauge table listed this row, but the takeoff sheet's column for it was missing; this version wires a "ga 16" column so oversized ducts are no longer left uncosted.</div>
+  <table class="ref-table">
+    <tr><th>Item</th><th>Range (mm)</th><th>Gauge</th><th>Designation</th><th>Thickness (mm)</th><th>Weight (kg/m²)</th><th>SMACNA Ref.</th></tr>
+    <tbody id="gauge-ref-body"></tbody>
+  </table>
+
+  <div class="section-header"><span class="badge">2</span> HANGER SPACING — SMACNA Table 4-1 (Low Pressure)</div>
+  <table class="ref-table">
+    <tr><th>Condition</th><th>Max Hanger Spacing</th><th>Rods per Trapeze Hanger</th></tr>
+    <tr><td>Any side ≤ 2400 mm</td><td>2.4 m</td><td>2</td></tr>
+    <tr><td>Any side &gt; 2400 mm</td><td>1.5 m</td><td>2</td></tr>
+  </table>
+  <div class="ok-box">The calculator uses 2.4 m spacing by default (assumption A-09, Tab 1). Reduce A-09 to 1.5 m in Tab 1 if any run has a side over 2400 mm.</div>
+</div>
+
+<!-- ================= TAB 4 : FORMULA REFERENCE ================= -->
+<div class="tab-content" id="tab-3">
+  <div class="section-header"><span class="badge">1</span> FORMULA REFERENCE &amp; ENGINEERING BASIS</div>
+  <div id="formula-ref-list"></div>
+</div>
+
+<div class="black-bar">
+  REFERENCES: SMACNA HVAC Duct Construction Standards, 3rd Edition (2005) &nbsp;|&nbsp; PSME Code (2012 Ed.) Part 1 &amp; 2 &nbsp;|&nbsp;
+  ASHRAE Fundamentals 2021 (Ch. 21 — Duct Design) &nbsp;|&nbsp; Based on template ME-DUCT-001 &nbsp;|&nbsp;
+  Verify all quantities with final construction drawings before procurement.
+</div>
+
+<script src="./js/calc.js"></script>
+<script src="./js/export.js"></script>
+<script src="./js/app.js"></script>
+</body>
+</html>
