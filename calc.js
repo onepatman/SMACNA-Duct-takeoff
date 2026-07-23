@@ -19,17 +19,17 @@ const SMACNA = (function () {
 
   // ---- Material coverage assumptions (A-01 ... A-11) ----
   const assumptionsMeta = [
-    { ref: "A-01", field: "A01", unit: "sq m / gal",   label: "Sealant coverage (duct mastic, SMACNA Class A sealing)", def: 35,    source: "SMACNA HVAC Duct Const. 3rd Ed., Ch. 5" },
-    { ref: "A-02", field: "A02", unit: "sq m / gal",   label: "Insulation adhesive coverage",                            def: 25,    source: "Manufacturer typical — verify product TDS" },
-    { ref: "A-03", field: "A03", unit: "pcs / sq m",   label: "Duct pin density (external insulation attachment)",       def: 4,     source: "Philippine MEPF contractor standard practice" },
-    { ref: "A-04", field: "A04", unit: "m",            label: "Duct section joint spacing (for duct tape calc.)",        def: 1.2,   source: "SMACNA standard duct section length (low pressure)" },
-    { ref: "A-05", field: "A05", unit: "m / roll",     label: "Duct tape roll length (20 yards per roll)",               def: 18.29, source: "Standard roll = 20 yd = 18.29 m (aluminum foil tape)" },
-    { ref: "A-06", field: "A06", unit: "m",            label: "Strap spacing along duct length (insulation banding)",    def: 1.5,   source: "Philippine MEPF contractor standard practice" },
-    { ref: "A-07", field: "A07", unit: "m / roll",     label: "Strap roll length (20 yards per roll)",                   def: 18.29, source: "Standard roll = 20 yd = 18.29 m (metal banding strap)" },
-    { ref: "A-08", field: "A08", unit: "factor (–)",   label: "Corner area factor (% of total duct area)",              def: 0.1,   source: "Engineering estimate — corner bead / angle trim" },
-    { ref: "A-09", field: "A09", unit: "m",            label: "Hanger spacing — max for rectangular duct (low press.)", def: 2.4,   source: "SMACNA Table 4-1 Low Pressure, ≤ 2400 mm side" },
-    { ref: "A-10", field: "A10", unit: "m",            label: "Threaded rod length per rod (ceiling drop / slab clearance)", def: 0.6, source: "Project-specific — adjust per actual ceiling height" },
-    { ref: "A-11", field: "A11", unit: "pcs / hanger", label: "Number of threaded rods per hanger (trapeze type)",      def: 2,     source: "SMACNA Table 4-1 — Standard trapeze hanger" }
+    { ref: "A-01", field: "A01", unit: "sq m / gal",   label: "Sealant coverage (duct mastic, SMACNA Class A sealing)", def: 35,    source: "SMACNA HVAC Duct Const. 3rd Ed., Ch. 5", locked: true },
+    { ref: "A-02", field: "A02", unit: "sq m / gal",   label: "Insulation adhesive coverage",                            def: 25,    source: "Manufacturer typical — verify product TDS", locked: false },
+    { ref: "A-03", field: "A03", unit: "pcs / sq m",   label: "Duct pin density (external insulation attachment)",       def: 4,     source: "Philippine MEPF contractor standard practice", locked: false },
+    { ref: "A-04", field: "A04", unit: "m",            label: "Duct section joint spacing (for duct tape calc.)",        def: 1.2,   source: "SMACNA standard duct section length (low pressure)", locked: true },
+    { ref: "A-05", field: "A05", unit: "m / roll",     label: "Duct tape roll length (20 yards per roll)",               def: 18.29, source: "Standard roll = 20 yd = 18.29 m (aluminum foil tape)", locked: true },
+    { ref: "A-06", field: "A06", unit: "m",            label: "Strap spacing along duct length (insulation banding)",    def: 1.5,   source: "Philippine MEPF contractor standard practice", locked: false },
+    { ref: "A-07", field: "A07", unit: "m / roll",     label: "Strap roll length (20 yards per roll)",                   def: 18.29, source: "Standard roll = 20 yd = 18.29 m (metal banding strap)", locked: true },
+    { ref: "A-08", field: "A08", unit: "factor (–)",   label: "Corner area factor (% of total duct area)",              def: 0.1,   source: "Engineering estimate — corner bead / angle trim", locked: false },
+    { ref: "A-09", field: "A09", unit: "m",            label: "Hanger spacing — max for rectangular duct (low press.)", def: 2.4,   source: "SMACNA Table 4-1 Low Pressure, ≤ 2400 mm side", locked: true },
+    { ref: "A-10", field: "A10", unit: "m",            label: "Threaded rod length per rod (ceiling drop / slab clearance)", def: 0.6, source: "Project-specific — adjust per actual ceiling height", locked: false },
+    { ref: "A-11", field: "A11", unit: "pcs / hanger", label: "Number of threaded rods per hanger (trapeze type)",      def: 2,     source: "SMACNA Table 4-1 — Standard trapeze hanger", locked: true }
   ];
 
   // ---- Human-readable formula reference (drives the "Formula Reference" tab) ----

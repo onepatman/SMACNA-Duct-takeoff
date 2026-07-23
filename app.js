@@ -17,20 +17,21 @@
     body.innerHTML = SMACNA.assumptionsMeta
       .map(
         (a) => `
-      <tr>
+      <tr class="${a.locked ? "locked-row" : ""}">
         <td>${a.ref}</td>
-        <td class="rate-cell"><input type="number" step="any" id="assump-${a.field}" value="${assumptions[a.field]}"></td>
+        <td class="rate-cell"><input type="number" step="any" id="assump-${a.field}" value="${assumptions[a.field]}"${a.locked ? " readonly title=\"Fixed SMACNA / standard value — not editable\"" : ""}></td>
         <td>${a.unit}</td>
         <td style="text-align:left">${a.label}</td>
-        <td style="text-align:left;font-size:.72rem;color:#555">${a.source}</td>
+        <td style="text-align:left;font-size:.72rem;color:#555">${a.locked ? "🔒 " : ""}${a.source}</td>
       </tr>`
       )
       .join("");
-    body.querySelectorAll("input").forEach((inp) => inp.addEventListener("input", onAssumptionChange));
+    body.querySelectorAll("input:not([readonly])").forEach((inp) => inp.addEventListener("input", onAssumptionChange));
   }
 
   function onAssumptionChange() {
     SMACNA.assumptionsMeta.forEach((a) => {
+      if (a.locked) return;
       const v = parseFloat(document.getElementById("assump-" + a.field).value);
       assumptions[a.field] = isNaN(v) ? a.def : v;
     });
