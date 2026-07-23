@@ -89,6 +89,8 @@ table.assump-table th,table.ref-table th{background:var(--graphite); color:#fff;
 table.assump-table td,table.ref-table td{border:1px solid var(--border); padding:6px 8px;}
 table.ref-table tr:nth-child(even) td{background:#FAFBFC;}
 table.assump-table td.rate-cell input{width:84px; margin:0 auto;}
+table.assump-table tr.locked-row td{background:#ECEFF1;}
+table.assump-table tr.locked-row td.rate-cell input{background:#ECEFF1; border-color:#90A4AE; color:#37474F; cursor:not-allowed;}
 
 .table-scroll{overflow-x:auto; border:1px solid var(--border); border-radius:3px; margin-top:8px;}
 table.takeoff{border-collapse:collapse; font-size:.72rem; min-width:2100px;}
