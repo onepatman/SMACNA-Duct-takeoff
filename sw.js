@@ -1,14 +1,14 @@
-const CACHE_NAME = "smacna-takeoff-v1";
+const CACHE_NAME = "smacna-takeoff-v2";
 const PRECACHE_URLS = [
   "./index.html",
   "./manifest.json",
-  "./css/style.css",
-  "./js/calc.js",
-  "./js/app.js",
-  "./js/export.js",
-  "./icons/icon-192.png",
-  "./icons/icon-512.png",
-  "./icons/favicon.png"
+  "./style.css",
+  "./calc.js",
+  "./app.js",
+  "./export.js",
+  "./icon-192.png",
+  "./icon-512.png",
+  "./favicon.png"
 ];
 
 self.addEventListener("install", (event) => {
