@@ -112,7 +112,6 @@ tr.data-row.incomplete td{background:var(--warn-bg);}
 .btn-add{background:#2E7D32; color:#fff;}
 .btn-clear{background:var(--steel); color:#fff;}
 .btn-pdf{background:var(--navy); color:#fff;}
-.btn-xlsx{background:#1B5E20; color:#fff;}
 
 .formula-item{margin:10px 0; padding:10px 12px; background:#fff; border:1px solid var(--border); border-radius:3px;}
 .formula-item .fname{font-weight:700; color:var(--accent-deep); margin-bottom:4px; font-size:.85rem;}
