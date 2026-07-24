@@ -63,13 +63,34 @@
     }>`;
   }
 
+  // Assumptions table shows terse engineering shorthand ("m", "sq m / gal")
+  // in the data itself (calc.js) so formulas/labels stay compact — this
+  // expands that shorthand to a full descriptive name for display only.
+  // Unrecognized units fall through unchanged, so new assumptionsMeta
+  // entries never break rendering.
+  const UNIT_LABELS = {
+    "m": "Meter (m)",
+    "m / roll": "Meter per Roll (m / roll)",
+    "sq m / gal": "Square Meter per Gallon (sq m / gal)",
+    "pcs / sq m": "Pieces per Square Meter (pcs / sq m)",
+    "pcs / hanger": "Pieces per Hanger (pcs / hanger)",
+    "factor (–)": "Multiplier Factor — Dimensionless (factor)",
+    "mm × mm": "Millimeter × Millimeter (mm × mm)",
+    "rod diameter": "Nominal Rod Diameter — Selectable (rod diameter)",
+    "angle size": "Nominal Angle Size — Selectable (angle size)",
+    "× diameter": "Multiple of Duct Diameter (× diameter)"
+  };
+  function unitLabel(u) {
+    return UNIT_LABELS[u] || u;
+  }
+
   function renderAssumptions() {
     const body = document.getElementById("assump-body");
     body.innerHTML = SMACNA.assumptionsMeta
       .map((a) => {
         const rangeLine =
           a.min != null
-            ? `<div style="font-size:.68rem;color:#607D8B;margin-top:3px">Typical: ${a.typical} &nbsp;|&nbsp; Range: ${a.min}–${a.max} ${a.unit}</div>`
+            ? `<div style="font-size:.68rem;color:#607D8B;margin-top:3px;text-align:center">Typical: ${a.typical} &nbsp;|&nbsp; Range: ${a.min}–${a.max} ${a.unit}</div>`
             : "";
         const guidanceLine = a.guidance
           ? `<div style="font-size:.68rem;color:#607D8B;font-style:italic;margin-top:3px">${a.guidance}</div>`
@@ -77,11 +98,11 @@
         const rowClass = a.locked ? "locked-row" : a.tier === "secondary" ? "secondary-row" : "";
         return `
       <tr class="${rowClass}">
-        <td>${a.ref}</td>
-        <td class="rate-cell">${rateCellHtml(a)}${rangeLine}</td>
-        <td>${a.unit}</td>
-        <td style="text-align:left">${a.label}${guidanceLine}</td>
-        <td style="text-align:left;font-size:.72rem;color:#555">${a.locked ? "🔒 " : ""}${a.source}</td>
+        <td data-label="Ref.">${a.ref}</td>
+        <td class="rate-cell" data-label="Rate Value">${rateCellHtml(a)}${rangeLine}</td>
+        <td data-label="Unit">${unitLabel(a.unit)}</td>
+        <td data-label="Description" style="text-align:left">${a.label}${guidanceLine}</td>
+        <td data-label="Code / Source" style="text-align:left;font-size:.72rem;color:#555">${a.locked ? "🔒 " : ""}${a.source}</td>
       </tr>`;
       })
       .join("");
