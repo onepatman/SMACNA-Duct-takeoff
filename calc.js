@@ -43,7 +43,8 @@ const SMACNA = (function () {
     { ref: "A-14", field: "A14", unit: "angle size",   label: "Trapeze angle size",                                      def: "1\"×1\"×1/8\"", type: "select", options: ["1\"×1\"×1/8\"", "1-1/2\"×1-1/2\"×1/8\"", "2\"×2\"×3/16\""],
       guidance: "Rule of thumb from published secondary references: angle size scales with duct size/pressure class, commonly 1\"×1\"×1/8\" up to 2\"×2\"×3/16\" for larger/higher-pressure duct. Confirm against your SMACNA 3rd Ed. manual before fabrication.",
       source: "Secondary-sourced guidance — verify against SMACNA manual", locked: false, tier: "secondary" },
-    { ref: "A-15", field: "A15", unit: "factor (–)",   label: "Waste / contingency factor (applied to all takeoff quantities)", def: 0.20, min: 0.10, max: 0.30, typical: 0.20, guidance: "20% is a common estimating default; adjust per project procurement/cutting-waste history.", source: "Estimating assumption — project contingency/waste allowance", locked: false, tier: "assumption" }
+    { ref: "A-15", field: "A15", unit: "factor (–)",   label: "Waste / contingency factor (applied to all takeoff quantities)", def: 0.20, min: 0.10, max: 0.30, typical: 0.20, guidance: "20% is a common estimating default; adjust per project procurement/cutting-waste history.", source: "Estimating assumption — project contingency/waste allowance", locked: false, tier: "assumption" },
+    { ref: "A-16", field: "A16", unit: "× diameter",   label: "Round duct fitting equivalent length factor (for Fittings & Accessories surface-area estimate)", def: 1.5, min: 1.0, max: 3.0, typical: 1.5, guidance: "Rough estimating shortcut only — NOT a verified SMACNA fitting-dimension source. Approximates each fitting's developed surface area as Circumference × (A-16 × Diameter), so it can feed into Insulation/Sealant/Adhesive/Duct Pin totals automatically instead of being a pure ordering-quantity line. Actual fitting geometry (gore count, taper length) varies by manufacturer — verify against actual fabrication drawings before procurement.", source: "Estimating assumption — rough approximation, verify against fabrication drawings", locked: false, tier: "assumption" }
   ];
 
   // Columns where the A-15 allowance means "spare pieces for damaged/lost
@@ -263,10 +264,10 @@ const SMACNA_ROUND = (function () {
       variables: "A-09/A-10/A-11/A-13/A-14 — same global assumptions as rectangular",
       example: "Angle (m) = Hangers × (Diameter÷1000 + 0.4) — same clearance-allowance methodology as rectangular's angle formula",
       note: "Same fixed-spec hanger assumptions as rectangular (A-13/A-14 rod/angle size are estimating assumptions, not size-varying SMACNA lookups).", source: "assumption" },
-    { name: "FITTINGS & ACCESSORIES", formula: "(no formula — manual schedule, quantities only)",
-      variables: "—",
-      example: "User enters e.g. 4× Elbow 90° at 300mm diameter",
-      note: "Fitting surface area/weight is NOT calculated — fitting geometry (gore count, taper length, etc.) isn't derivable from a straight-run diameter/length table, and there is no verified SMACNA fitting-dimension source available in this session to compute it from. This section produces ordering quantities only.", source: "assumption" }
+    { name: "FITTINGS & ACCESSORIES — ESTIMATED SURFACE AREA", formula: "Fitting Area (sq m) = Circumference × (A-16 × Diameter÷1000) × Quantity",
+      variables: "A-16 = fitting equivalent-length factor (typical 1.5× diameter, range 1.0–3.0); Circumference = π × Diameter÷1000",
+      example: "Elbow 90°, 300mm diameter, qty 1 → Circumference 0.942 m × (1.5 × 0.300) = 0.942 × 0.45 = 0.42 sq m",
+      note: "A rough estimating shortcut, NOT a verified SMACNA fitting-dimension source — real fitting geometry (gore count, taper length) varies by manufacturer. This estimated area feeds into Insulation/Sealant/Adhesive/Duct Pins only (not weight/gauge, since fitting gauge/material isn't tracked here) — verify against actual fabrication drawings before procurement.", source: "assumption" }
   ];
 
   function defaultRoundAssumptions() {
@@ -320,5 +321,19 @@ const SMACNA_ROUND = (function () {
     return total;
   }
 
-  return { fittingTypes, formulaRef, defaultRoundAssumptions, computeRow, sumRows };
+  /**
+   * Estimated surface area for one Fittings & Accessories schedule line.
+   * Rough estimating shortcut (A-16), not a verified SMACNA fitting-dimension
+   * source — see the FITTINGS & ACCESSORIES formula reference entry.
+   * Returns 0 for incomplete/invalid input rather than null, since this
+   * contributes to a running sum, not a standalone row result.
+   */
+  function computeFittingArea(sizeMm, qty, assumptions) {
+    if (!sizeMm || !qty || sizeMm <= 0 || qty <= 0) return 0;
+    const circumference = Math.PI * (sizeMm / 1000);
+    const equivalentLength = assumptions.A16 * (sizeMm / 1000);
+    return circumference * equivalentLength * qty;
+  }
+
+  return { fittingTypes, formulaRef, defaultRoundAssumptions, computeRow, sumRows, computeFittingArea };
 })();

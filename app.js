@@ -106,6 +106,8 @@
     });
     renderReferenceTiers();
     recalcAllRows();
+    recalcAllRoundRows();
+    recalcRoundTotals(); // also refreshes the Fittings & Accessories (A-16) contribution even with zero round duct rows
   }
 
   // ---------------- Formula reference tab ----------------
@@ -567,15 +569,39 @@
     recalcRoundTotals();
   }
 
+  // Fittings & Accessories schedule contributes an *estimated* surface area
+  // (A-16 equivalent-length factor — see calc.js) into the same coverage-rate
+  // formulas as straight duct (Insulation/Sealant/Adhesive/Duct Pins only —
+  // not weight, since fitting gauge/material isn't tracked). Quantities
+  // themselves stay manual; only this derived area is estimated.
+  function computeFittingsArea() {
+    let total = 0;
+    document.querySelectorAll("#fittings-body tr").forEach((tr) => {
+      const id = tr.id.replace("fitting-row-", "");
+      const sizeEl = document.getElementById("fitsize-" + id);
+      const qtyEl = document.getElementById("fitqty-" + id);
+      if (!sizeEl || !qtyEl) return;
+      total += SMACNA_ROUND.computeFittingArea(parseFloat(sizeEl.value), parseFloat(qtyEl.value), assumptions);
+    });
+    return total;
+  }
+
   function computeRoundGrandTotals() {
     const results = Array.from(roundRowResults.values());
     const totals = {};
     ROUND_COL_DEFS.forEach(({ field }) => (totals[field] = SMACNA_ROUND.sumRows(results, field)));
-    return { totals, wasteFactor: assumptions.A15 };
+
+    const fittingsArea = computeFittingsArea();
+    totals.insulation += fittingsArea;
+    totals.sealant += Math.round((fittingsArea / assumptions.A01) * 100) / 100;
+    totals.adhesive += Math.round((fittingsArea / assumptions.A02) * 100) / 100;
+    totals.pins += Math.ceil(fittingsArea * assumptions.A03);
+
+    return { totals, wasteFactor: assumptions.A15, fittingsArea };
   }
 
   function recalcRoundTotals() {
-    const { totals, wasteFactor } = computeRoundGrandTotals();
+    const { totals, wasteFactor, fittingsArea } = computeRoundGrandTotals();
     ROUND_COL_DEFS.forEach(({ field, suf }) => {
       const t = totals[field];
       const dec = ROUND_DECIMAL_FIELDS.includes(field);
@@ -594,10 +620,10 @@
     const incompleteWarning = document.getElementById("round-incomplete-warning");
     if (incompleteWarning) incompleteWarning.style.display = nIncomplete > 0 ? "block" : "none";
 
-    renderRoundSummary(totals, wasteFactor);
+    renderRoundSummary(totals, wasteFactor, fittingsArea);
   }
 
-  function renderRoundSummary(totals, wasteFactor) {
+  function renderRoundSummary(totals, wasteFactor, fittingsArea) {
     const body = document.getElementById("round-summary-body");
     if (!body) return;
     const lineBox = (field) => {
@@ -620,15 +646,16 @@
     const nFittings = document.querySelectorAll("#fittings-body tr").length;
 
     body.innerHTML = `
-      <div class="subsection-header">Straight Duct — Miscellaneous &amp; Consumables</div>
+      <div class="subsection-header">Miscellaneous &amp; Consumables (Straight Duct + Fittings Estimate)</div>
+      <div class="report-note" style="margin-bottom:6px">Includes an estimated surface-area contribution from the Fittings &amp; Accessories schedule below (A-16 equivalent-length factor, currently ${fittingsArea.toFixed(2)} sq m before waste/contingency) — a rough approximation, not a verified SMACNA fitting-dimension calculation.</div>
       <div class="summary-grid">${miscFields.map(lineBox).join("")}</div>
 
-      <div class="subsection-header">Straight Duct — Hangers &amp; Supports</div>
+      <div class="subsection-header">Hangers &amp; Supports</div>
       <div class="warning-box">⚠ Rod diameter (A-13: ${assumptions.A13}) and trapeze angle size (A-14: ${assumptions.A14}) are manually selected estimating assumptions — <b>NOT</b> automatically SMACNA-compliant sizing. Final support sizing must be verified by the project engineer against the applicable SMACNA edition before fabrication or installation.</div>
       <div class="summary-grid">${hangerFields.map(lineBox).join("")}</div>
 
-      <div class="subsection-header">Fittings &amp; Accessories (manual quantities — not included in the totals above)</div>
-      <div class="ok-box">${nFittings} fitting line item(s) entered in the schedule above. These are ordering quantities only — no area/weight is calculated for fittings.</div>
+      <div class="subsection-header">Fittings &amp; Accessories</div>
+      <div class="ok-box">${nFittings} fitting line item(s) entered in the schedule above. Quantities are manual (for ordering); their estimated surface-area contribution (A-16) is included in Insulation/Sealant/Adhesive/Duct Pins above. Weight/gauge per fitting is still not tracked — verify against actual fabrication drawings before procurement.</div>
 
       <div class="ok-box">${nRows} round duct run(s) computed successfully. Final Takeoff totals (Net + Waste/Contingency Allowance, A-15) update live as you edit any cell above.</div>
     `;
@@ -649,6 +676,8 @@
       </tr>`
     );
     document.getElementById("fitqty-" + id).addEventListener("input", () => recalcRoundTotals());
+    document.getElementById("fitsize-" + id).addEventListener("input", () => recalcRoundTotals());
+    document.getElementById("fittype-" + id).addEventListener("change", () => recalcRoundTotals());
   };
   window.removeFittingRow = function (id) {
     const el = document.getElementById("fitting-row-" + id);
@@ -764,7 +793,7 @@
   }
 
   function buildRoundReportSections() {
-    const { totals, wasteFactor } = computeRoundGrandTotals();
+    const { totals, wasteFactor, fittingsArea } = computeRoundGrandTotals();
 
     const rowsHtml = Array.from(document.querySelectorAll("#round-input-body tr.data-row"))
       .map((tr) => {
@@ -832,6 +861,7 @@
       </div>
       <div class="report-section">
         <div class="report-section-title">3. Miscellaneous &amp; Consumables</div>
+        <div class="report-note">Includes an estimated surface-area contribution from the Fittings &amp; Accessories schedule below (A-16 equivalent-length factor, ${fittingsArea.toFixed(2)} sq m before waste/contingency) — a rough approximation, not a verified SMACNA fitting-dimension calculation.</div>
         <table class="report-table"><thead><tr><th>Item</th><th>Final (incl. allowance)</th><th>Audit detail</th></tr></thead>
         <tbody>${miscFields.map(lineHtml).join("")}</tbody></table>
       </div>
@@ -842,8 +872,8 @@
         <tbody>${hangerFields.map(lineHtml).join("")}</tbody></table>
       </div>
       <div class="report-section">
-        <div class="report-section-title">1② MANUAL — Fittings &amp; Accessories Schedule</div>
-        <div class="report-disclaimer">⚠ Fitting quantities are entered manually for material ordering only. Surface area, weight, and gauge per fitting are NOT calculated — no verified SMACNA fitting-dimension source was available in this session. Treat these as ordering quantities only.</div>
+        <div class="report-section-title">1② Fittings &amp; Accessories Schedule</div>
+        <div class="report-disclaimer">⚠ Fitting quantities and sizes are entered manually. Their surface-area contribution to Section 3 above is an ESTIMATE (A-16 equivalent-length approximation) — NOT a verified SMACNA fitting-dimension calculation, since real fitting geometry varies by manufacturer. Weight and gauge per fitting are still not tracked. Verify against actual fabrication drawings before procurement.</div>
         <table class="report-table"><thead><tr><th>Fitting Type</th><th>Size/Diameter mm</th><th>Quantity</th></tr></thead>
         <tbody>${fittingsHtml || '<tr><td colspan="3">No fittings entered.</td></tr>'}</tbody></table>
       </div>`;
