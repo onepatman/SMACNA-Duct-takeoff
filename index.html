@@ -95,6 +95,14 @@
       </select>
       <div style="font-size:.68rem;color:#607D8B;font-style:italic;margin-top:3px">Selects which SMACNA gauge/reinforcement table (6-1 or 6-2, both 2" w.g. static) drives the automatic gauge assignment in Tab 2 — see Tab 3, Verified Primary tier, for the full bracket breakdown.</div>
     </div>
+    <div class="proj-field">
+      <label>DUCT MATERIAL</label>
+      <select id="p-duct-material" onchange="onDuctMaterialChange()">
+        <option value="steel" selected>Galvanized Steel</option>
+        <option value="aluminum">Aluminum (Alloy 3003-H14)</option>
+      </select>
+      <div style="font-size:.68rem;color:#607D8B;font-style:italic;margin-top:3px">Aluminum converts sheet weight/thickness via SMACNA Table 6-3's commercial-size row for the steel-equivalent gauge Tab 2 already assigns. Gauge assignment itself and all hanger/reinforcement hardware (A-13/A-14, Table 6-7) stay steel-spec either way — Table 6-4/6-5 aluminum dimension/reinforcement equivalents are not yet implemented.</div>
+    </div>
   </div>
   <div class="warning-box" id="pressure-class-warning" style="display:none">⚠ Gauge automation in this app is wired to SMACNA Table 6-1/6-2 (rectangular) and Table 6-8 (round) for Low Pressure (&lt;2" w.g.) only. Medium/High Pressure are classification labels only — no gauge or reinforcement table backs them in this app at all. Use the manual gauge override in the Results table (Tab 2) for any run outside Low Pressure.</div>
 
@@ -301,6 +309,9 @@
   <div class="subsection-header">Gauge Selection — SMACNA Table 6-8 (Round, Pressure &lt;2" w.g. static)</div>
   <div class="legend-box">Gauge is selected by <b>Diameter</b>. Only the Round, &lt;2" w.g. (Low Pressure) column was transcribed — Table 6-8 also gives separate Flat-Oval and &gt;2"–&lt;10" w.g. Spiral/Longitudinal-Seam/Welded-Fittings values this app doesn't model (no seam-type or flat-oval input yet). Table stops at 84" (2134mm) — see Tab 2's out-of-range warning for anything larger.</div>
   <div id="round-gauge-ref-body"></div>
+  <div class="subsection-header">Material Thickness Equivalency — SMACNA Table 6-3 (Rectangular Aluminum Duct, Alloy 3003-H14)</div>
+  <div class="legend-box">Converts the steel-equivalent gauge Tab 2 already assigns into an aluminum thickness — used when Tab 1's Duct Material is set to Aluminum. Table 6-3's own weight row says "Consult Appendix-5 for Weights," which wasn't part of the supplied source pages, so weight here is computed from thickness × a general aluminum density constant (2700 kg/m³) instead of a SMACNA-tabulated figure. <b>Not yet implemented:</b> Table 6-4 (Dimension Adjustments — keyed by a different "Rigidity Class" A–L lettering not confirmed to align with Table 6-1/6-2's Reinf. Code Grade C–I) and Table 6-5 (Reinforcement angle/bar aluminum equivalents — this app hasn't transcribed the underlying steel angle/bar sizes for the reinforcement codes either).</div>
+  <div id="aluminum-ref-body"></div>
   <div class="subsection-header">Assumption values in this tier</div>
   <table class="ref-table"><tr><th>Ref.</th><th>Value</th><th>Description</th><th>Guidance</th></tr><tbody id="ref-primary-body"></tbody></table>
 

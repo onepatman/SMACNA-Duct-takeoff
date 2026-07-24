@@ -90,6 +90,43 @@ const SMACNA = (function () {
     ]
   };
 
+  // ---- SMACNA Table 6-3 — rectangular aluminum duct thickness adjustments
+  // (adapted from 3" w.g. / 750 Pa or lower). Same source/provenance as the
+  // tables above. Keyed by the STEEL gauge label this app's Table 6-1/6-2/
+  // 6-8 lookups already resolve to — Table 6-3's own steel-gauge decimal-mm
+  // header is intentionally not used here (it doesn't exactly match this
+  // app's pre-existing gaugeInfo.thickness numbers, a discrepancy between
+  // two different "existing"/"primary" sources; only the gauge NUMBER,
+  // which both agree on, is used as the join key, so nothing pre-existing
+  // is silently altered by this table).
+  // Alloy 3003-H14. "Lbs wt/Sf Alum." row says "Consult Appendix-5 for
+  // Weights" — that appendix was not part of the supplied source pages, so
+  // aluminum weight here is computed from thickness × a general aluminum
+  // density constant instead (see ALUMINUM_DENSITY_KG_M3), not a
+  // SMACNA-tabulated weight figure.
+  // Deliberately NOT transcribed this pass: Table 6-4 (Dimension
+  // Adjustments, keyed by a "Galv. Rigidity Class" A–L that is a different
+  // lettering system from Table 6-1/6-2's Reinf. Code Grade C–I, with no
+  // supplied cross-reference confirming they align) and Table 6-5
+  // (Reinforcement angle/bar aluminum equivalents — this app never
+  // transcribed the underlying STEEL angle/bar sizes for Table 6-1/6-2's
+  // reinforcement codes either, so there's nothing yet to convert).
+  const ALUMINUM_THICKNESS_TABLE = {
+    tableRef: "SMACNA Table 6-3 (Rectangular Aluminum Duct, Alloy 3003-H14)",
+    byGauge: {
+      "ga 26": { minEquivMm: 0.69, commercialMm: 0.80 },
+      "ga 24": { minEquivMm: 0.86, commercialMm: 1.00 },
+      "ga 22": { minEquivMm: 1.09, commercialMm: 1.27 },
+      "ga 20": { minEquivMm: 1.32, commercialMm: 1.60 },
+      "ga 18": { minEquivMm: 1.70, commercialMm: 1.80 },
+      "ga 16": { minEquivMm: 2.11, commercialMm: 2.29 }
+    }
+  };
+  // General physical constant (not SMACNA-specific) — used only to convert
+  // Table 6-3's aluminum thickness into a weight, since the SMACNA weight
+  // table ("Appendix-5") wasn't supplied.
+  const ALUMINUM_DENSITY_KG_M3 = 2700;
+
   // ---- Material coverage assumptions (A-01 ... A-15) ----
   // tier: which of the four Gauge & References categories this belongs to.
   // "existing" = carried over from the app's pre-existing source workbook,
@@ -195,10 +232,10 @@ const SMACNA = (function () {
       variables: "A-11 = rods per hanger (2)",
       example: "6 × 2 × 2 = 24 pcs",
       note: "2 washers per rod: one under the bearing nut, one at the angle bracket.", source: "existing" },
-    { name: "EST. SHEET METAL WEIGHT", formula: "Weight (kg) = Area(assigned gauge) × Gauge Unit Weight",
-      variables: "Gauge Unit Weight from the gauge thickness/weight chart (existing app reference, kg/sq m), e.g. ga 22 = 6.70 kg/sq m",
-      example: "20.00 × 6.70 = 134.00 kg",
-      note: "Added in this fillable version for quick steel-order weight estimates; not part of the original source workbook.", source: "existing" },
+    { name: "EST. SHEET METAL WEIGHT", formula: "Steel: Weight (kg) = Area(assigned gauge) × Gauge Unit Weight. Aluminum: Weight (kg) = Area × SMACNA T6-3 commercial-size thickness (m) × 2700 kg/m³",
+      variables: "Gauge Unit Weight (steel) from the gauge thickness/weight chart (existing app reference, kg/sq m), e.g. ga 22 = 6.70 kg/sq m. Aluminum thickness from SMACNA Table 6-3's commercial-size row for the same steel-equivalent gauge; 2700 kg/m³ is a general aluminum density constant, not a SMACNA-tabulated weight (Table 6-3's own weight row says \"Consult Appendix-5,\" not supplied in this session).",
+      example: "Steel ga 22: 20.00 sq m × 6.70 kg/sq m = 134.00 kg. Aluminum equivalent: 20.00 × 0.00127 m × 2700 kg/m³ = 68.58 kg",
+      note: "Tab 1's Duct Material selector picks steel (default) or aluminum. Gauge bracket assignment and hanger/reinforcement hardware stay steel-spec either way — only the sheet metal weight/thickness converts.", source: "primary" },
     { name: "WASTE / CONTINGENCY ALLOWANCE", formula: "Allowance = Net Quantity × A-15",
       variables: "A-15 = waste/contingency factor (typical 0.20 = 20%, range 0.10–0.30)",
       example: "Net Insulation 20.00 sq m × 0.20 = 4.00 sq m allowance",
@@ -248,6 +285,34 @@ const SMACNA = (function () {
   }
 
   /**
+   * Resolves sheet weight for a given steel-equivalent gauge label and
+   * material choice. "steel" uses the existing gaugeInfo weight-per-sqm
+   * directly; "aluminum" converts via Table 6-3's commercial-size row
+   * (the stock thickness you'd actually order, not the bare structural
+   * minimum) and a general aluminum density constant, since SMACNA's own
+   * weight table ("Appendix-5") wasn't supplied. Falls back to steel if
+   * the gauge has no Table 6-3 entry (shouldn't happen for ga26–ga16).
+   */
+  function materialWeight(gaugeLabel, area, material) {
+    if (material === "aluminum") {
+      const alu = ALUMINUM_THICKNESS_TABLE.byGauge[gaugeLabel];
+      if (alu) {
+        return {
+          weight: area * (alu.commercialMm / 1000) * ALUMINUM_DENSITY_KG_M3,
+          materialThicknessMm: alu.commercialMm,
+          materialLabel: `Aluminum — commercial ${alu.commercialMm}mm (SMACNA T6-3 equiv. of ${gaugeLabel} steel)`
+        };
+      }
+    }
+    const g = gaugeInfo.find((x) => x.label === gaugeLabel);
+    return {
+      weight: area * (g ? g.weight : 0),
+      materialThicknessMm: g ? g.thickness : null,
+      materialLabel: `Galvanized Steel (${gaugeLabel})`
+    };
+  }
+
+  /**
    * Compute one duct run. Returns null (incomplete) if W/D/L are missing or <= 0.
    * NOTE: preserved exactly from source, including rounding order.
    * gaugeOverride (optional): index into gaugeInfo, from the per-row manual
@@ -255,8 +320,13 @@ const SMACNA = (function () {
    * automation is verified only for Low Pressure (2" w.g.), so anything else
    * must be a user-confirmed manual choice rather than a false auto-lookup.
    * sectionLength: "4ft" (Table 6-1) or "5ft" (Table 6-2) — Tab 1 project setting.
+   * material: "steel" (default) or "aluminum" — Tab 1 Duct Material setting.
+   *   Only converts sheet weight/thickness (SMACNA Table 6-3); gauge
+   *   bracket assignment and reinforcement/hanger hardware stay
+   *   steel-spec regardless (Table 6-4/6-5 aluminum equivalents not
+   *   transcribed — see ALUMINUM_THICKNESS_TABLE comment above).
    */
-  function computeRow(w, d, l, assumptions, gaugeOverride, sectionLength) {
+  function computeRow(w, d, l, assumptions, gaugeOverride, sectionLength, material) {
     if (!w || !d || !l || w <= 0 || d <= 0 || l <= 0) return null;
 
     const perimeter = 2 * (w / 1000 + d / 1000);
@@ -279,13 +349,14 @@ const SMACNA = (function () {
     const insert = hangerCount * assumptions.A11; // NOTE: see flagged item — this is rod-insert count, not hanger count
     const nuts = insert * 2;
     const washers = insert * 2;
-    const weight = area * gaugeInfo[gi].weight;
+    const { weight, materialThicknessMm, materialLabel } = materialWeight(gaugeInfo[gi].label, area, material);
 
     const byGauge = {};
     gaFields.forEach((f, i) => (byGauge[f] = i === gi ? area : null));
 
     return {
       perimeter, area, gaugeIndex: gi, byGauge, gaugeOutOfRange, gaugeTableRef: tableRef,
+      materialThicknessMm, materialLabel,
       insulation, sealant, adhesive, pins, tape, strap, corner,
       hangerCount, angle, rod, insert, nuts, washers, weight
     };
@@ -308,8 +379,9 @@ const SMACNA = (function () {
   }
 
   return {
-    gaugeInfo, RECT_GAUGE_TABLES, DUCT_SUPPORT_TABLE, assumptionsMeta, formulaRef, decimalCols, gaFields, contingencyFields,
-    defaultAssumptions, gaugeIndex, gaugeBracket, computeRow, sumRows, sumGauge
+    gaugeInfo, RECT_GAUGE_TABLES, DUCT_SUPPORT_TABLE, ALUMINUM_THICKNESS_TABLE, ALUMINUM_DENSITY_KG_M3,
+    assumptionsMeta, formulaRef, decimalCols, gaFields, contingencyFields,
+    defaultAssumptions, gaugeIndex, gaugeBracket, materialWeight, computeRow, sumRows, sumGauge
   };
 })();
 
@@ -410,8 +482,11 @@ const SMACNA_ROUND = (function () {
    * gaugeLabel: "Auto" (or falsy) looks up SMACNA Table 6-8 (<2" w.g.) by
    * diameter; anything else (e.g. "ga 22") is a manual override — matched
    * against SMACNA.gaugeInfo.
+   * material: "steel" (default) or "aluminum" — same Table 6-3 conversion
+   * as the rectangular module (SMACNA.materialWeight); gauge bracket
+   * assignment stays steel-spec either way.
    */
-  function computeRow(diameter, length, qty, gaugeLabel, assumptions) {
+  function computeRow(diameter, length, qty, gaugeLabel, assumptions, material) {
     if (!diameter || !length || !qty || diameter <= 0 || length <= 0 || qty <= 0) return null;
 
     const circumference = Math.PI * (diameter / 1000);
@@ -445,11 +520,11 @@ const SMACNA_ROUND = (function () {
       gaugeAuto = true;
       gaugeOutOfRange = outOfRange;
     }
-    const gaugeMatch = SMACNA.gaugeInfo.find((g) => g.label === resolvedGauge) || SMACNA.gaugeInfo[0];
-    const weight = area * gaugeMatch.weight;
+    const { weight, materialThicknessMm, materialLabel } = SMACNA.materialWeight(resolvedGauge, area, material);
 
     return {
       circumference, areaPerPiece, area, gaugeLabel: resolvedGauge, gaugeAuto, gaugeOutOfRange,
+      materialThicknessMm, materialLabel,
       insulation, sealant, adhesive, pins, tape, strap,
       hangerCount, angle, rod, insert, nuts, washers, weight
     };

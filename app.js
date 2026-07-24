@@ -52,6 +52,17 @@
     recalcAllRows(); // gauge assignment depends on which table (6-1/6-2) is selected
   };
 
+  // ---------------- Duct material (Steel vs Aluminum, SMACNA Table 6-3) ----------------
+  function ductMaterial() {
+    const el = document.getElementById("p-duct-material");
+    return el ? el.value : "steel";
+  }
+  window.onDuctMaterialChange = function () {
+    recalcAllRows();
+    recalcAllRoundRows();
+    recalcRoundTotals();
+  };
+
   // ---------------- Assumptions tab ----------------
   function escapeAttr(s) {
     return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;");
@@ -222,7 +233,21 @@
       .map((b) => `<tr><td>${b.maxDim}</td><td>${b.gauge}</td><td>${b.aluminumGauge}</td></tr>`)
       .join("");
     body.innerHTML = `<table class="ref-table"><tr><th>Duct Diameter (max. width)</th><th>Steel Ga. (min, &lt;2" w.g.)</th><th>Aluminum B.&amp;S. Gage (reference)</th></tr>${rows}</table>
-      <div class="ref-tier-note">Aluminum gauge is shown for reference only — this app does not yet support an aluminum material option. Drives the Round Duct calculator's "Auto" gauge lookup in Tab 2.</div>`;
+      <div class="ref-tier-note">Aluminum B.&amp;S. Gage is shown for reference only — it is not the same equivalency system as Table 6-3 (below), which is what actually drives this app's Aluminum weight calculation. Steel Ga. drives the Round Duct calculator's "Auto" gauge lookup in Tab 2 regardless of Duct Material.</div>`;
+  }
+
+  function renderAluminumTable() {
+    const body = document.getElementById("aluminum-ref-body");
+    if (!body) return;
+    const t = SMACNA.ALUMINUM_THICKNESS_TABLE;
+    const rows = Object.keys(t.byGauge)
+      .map((label) => {
+        const g = t.byGauge[label];
+        return `<tr><td>${label}</td><td>${g.minEquivMm} mm</td><td>${g.commercialMm} mm</td></tr>`;
+      })
+      .join("");
+    body.innerHTML = `<table class="ref-table"><tr><th>Steel-Equivalent Gauge</th><th>Min. Aluminum Equivalent</th><th>Commercial Size (used for weight)</th></tr>${rows}</table>
+      <div class="ref-tier-note">This app uses the Commercial Size (the stock thickness you'd actually order) for the Aluminum weight calculation — Min. Equivalent is the bare structural minimum, shown for reference. Aluminum density used: ${SMACNA.ALUMINUM_DENSITY_KG_M3} kg/m³ (general physical constant, not SMACNA-tabulated).</div>`;
   }
 
   // ---------------- Gauge & References tab: five-tier breakdown ----------------
@@ -355,7 +380,7 @@
     const overrideEl = document.getElementById("gaugeover-" + id);
     const overrideVal = overrideEl ? overrideEl.value : "Auto";
     const gaugeOverride = overrideVal === "Auto" ? null : SMACNA.gaugeInfo.findIndex((g) => g.label === overrideVal);
-    const result = SMACNA.computeRow(w, d, l, assumptions, gaugeOverride != null && gaugeOverride >= 0 ? gaugeOverride : null, sectionLength());
+    const result = SMACNA.computeRow(w, d, l, assumptions, gaugeOverride != null && gaugeOverride >= 0 ? gaugeOverride : null, sectionLength(), ductMaterial());
     rowResults.set(id, result);
 
     const fields = ["perim", "area", "ins", "seal", "adh", "pin", "tape", "strap", "corner", "angle", "rod", "insert", "nuts", "wash", "weight"];
@@ -403,7 +428,9 @@
     document.getElementById("insert-" + id).textContent = result.insert;
     document.getElementById("nuts-" + id).textContent = result.nuts;
     document.getElementById("wash-" + id).textContent = result.washers;
-    document.getElementById("weight-" + id).textContent = result.weight.toFixed(1);
+    const weightCell = document.getElementById("weight-" + id);
+    weightCell.textContent = result.weight.toFixed(1);
+    weightCell.title = result.materialLabel || "";
 
     recalcTotals();
   }
@@ -625,7 +652,7 @@
     if (runNameEl && runRefEl) runRefEl.textContent = runNameEl.value;
     const inEl = document.getElementById("round-row-" + id);
     const resEl = document.getElementById("round-res-" + id);
-    const result = SMACNA_ROUND.computeRow(dia, len, qty, gauge, assumptions);
+    const result = SMACNA_ROUND.computeRow(dia, len, qty, gauge, assumptions, ductMaterial());
     roundRowResults.set(id, result);
 
     const fields = ["circ", "area", "gaugeval", "ins", "seal", "adh", "pin", "angle", "rod", "insert", "nuts", "wash", "weight"];
@@ -656,7 +683,9 @@
     document.getElementById("rinsert-" + id).textContent = result.insert;
     document.getElementById("rnuts-" + id).textContent = result.nuts;
     document.getElementById("rwash-" + id).textContent = result.washers;
-    document.getElementById("rweight-" + id).textContent = result.weight.toFixed(1);
+    const rWeightCell = document.getElementById("rweight-" + id);
+    rWeightCell.textContent = result.weight.toFixed(1);
+    rWeightCell.title = result.materialLabel || "";
 
     recalcRoundTotals();
   }
@@ -981,6 +1010,7 @@
     const modeLabel = ductMode === "rect" ? "Rectangular" : "Round";
     const pressureClass = pv("p-pressure-class") || "Low";
     const designPressure = pv("p-design-pressure");
+    const materialLabel = ductMaterial() === "aluminum" ? "Aluminum (Alloy 3003-H14, SMACNA T6-3 equiv.)" : "Galvanized Steel";
 
     container.innerHTML = `
       <div class="report-header">
@@ -992,6 +1022,7 @@
           <tr><td><b>Location:</b> ${pv("p-loc")}</td><td><b>Checked By:</b> ${pv("p-check")}</td></tr>
           <tr><td><b>Revision:</b> ${pv("p-rev")}</td><td><b>Sheet:</b> ${pv("p-sheet")}</td></tr>
           <tr><td><b>Pressure Class (terminology):</b> ${pressureClass}${pressureClass !== "Low" ? " — classification label only, not backed by a verified gauge/reinforcement table in this app" : ""}</td><td><b>Design Static Pressure:</b> ${designPressure ? designPressure + " in.w.g." : "—"}</td></tr>
+          <tr><td><b>Duct Material:</b> ${materialLabel}</td><td></td></tr>
         </table>
       </div>
 
@@ -1048,6 +1079,7 @@
     renderGaugeTable();
     renderDuctSupportTable();
     renderRoundGaugeTable();
+    renderAluminumTable();
     renderReferenceTiers();
     window.addRow("SA-01", "SA", 400, 300, 10);
     window.addRow("SA-02", "SA", 600, 400, 8);
