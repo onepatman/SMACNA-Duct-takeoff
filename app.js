@@ -5,6 +5,16 @@
   let rowCounter = 0;
   const rowResults = new Map(); // id -> computeRow() result (or null if incomplete)
 
+  // Shared across the Gauge & References tab, the Formula Reference tab, and
+  // the print report — one definition of what each source tier means and how
+  // it's badged, so the three surfaces never drift out of sync.
+  const TIER_LABELS = {
+    existing: { badge: "🗂️ Existing App/Workbook Reference", note: "Inherited from the app's original source workbook — not independently re-verified against a primary SMACNA document in this session." },
+    secondary: { badge: "🔎 Secondary-Sourced Guidance", note: "Aggregated from published secondary sources, not the primary SMACNA manual — confirm exact values against your SMACNA 3rd Ed. before use." },
+    assumption: { badge: "📐 Engineering/Estimating Assumption", note: "Project-adjustable estimating judgment, not code-mandated." },
+    general: { badge: "📖 General Material/Industry Reference", note: "Common physical/product constant, not a SMACNA-specific citation." }
+  };
+
   // ---------------- Tabs ----------------
   window.showTab = function (i) {
     document.querySelectorAll(".tab-content").forEach((el, idx) => el.classList.toggle("active", idx === i));
@@ -73,6 +83,7 @@
       const v = parseFloat(document.getElementById("assump-" + a.field).value);
       assumptions[a.field] = isNaN(v) ? a.def : v;
     });
+    renderReferenceTiers();
     recalcAllRows();
   }
 
@@ -82,9 +93,12 @@
       .map(
         (f) => `
       <div class="formula-item">
-        <div class="fname">${f.name} <span style="color:#8FA3AF;font-weight:400">(col ${f.col})</span></div>
+        <div class="fname">${f.name}</div>
         <div class="formula-box" style="margin:4px 0">${f.formula}</div>
-        <div style="font-size:.8rem;color:#3C4B57">${f.note}</div>
+        <div style="font-size:.78rem;color:#3C4B57"><b>Variables:</b> ${f.variables}</div>
+        <div style="font-size:.78rem;color:#1565C0;margin-top:3px"><b>Example:</b> ${f.example}</div>
+        <div style="font-size:.78rem;color:#3C4B57;margin-top:3px">${f.note}</div>
+        <div style="font-size:.68rem;color:#8FA3AF;margin-top:4px">${TIER_LABELS[f.source].badge}</div>
       </div>`
       )
       .join("");
@@ -99,6 +113,44 @@
         return `<tr><td>${i + 1}</td><td>${range}</td><td>${g.label}</td><td>No. ${g.label.split(" ")[1]}</td><td>${g.thickness}</td><td>${g.weight}</td><td>${g.ref}</td></tr>`;
       })
       .join("");
+  }
+
+  // ---------------- Gauge & References tab: four-tier breakdown ----------------
+  function renderReferenceTiers() {
+    const rowsFor = (tier) => SMACNA.assumptionsMeta.filter((a) => a.tier === tier);
+
+    const existingBody = document.getElementById("ref-existing-body");
+    if (existingBody) {
+      existingBody.innerHTML = rowsFor("existing")
+        .map((a) => `<tr><td>${a.ref}</td><td>${fmtAssumpValue(a)}</td><td style="text-align:left">${a.label}</td></tr>`)
+        .join("");
+    }
+
+    const secondaryBody = document.getElementById("ref-secondary-body");
+    if (secondaryBody) {
+      secondaryBody.innerHTML = rowsFor("secondary")
+        .map((a) => `<tr><td>${a.ref}</td><td>${fmtAssumpValue(a)}</td><td style="text-align:left">${a.label}</td><td style="text-align:left;font-size:.7rem">${a.guidance || ""}</td></tr>`)
+        .join("");
+    }
+
+    const assumptionBody = document.getElementById("ref-assumption-body");
+    if (assumptionBody) {
+      assumptionBody.innerHTML = rowsFor("assumption")
+        .map(
+          (a) =>
+            `<tr><td>${a.ref}</td><td>${fmtAssumpValue(a)}</td><td style="text-align:left">${a.label}</td><td>${
+              a.min != null ? `${a.min}–${a.max} ${a.unit}` : "—"
+            }</td></tr>`
+        )
+        .join("");
+    }
+
+    const generalBody = document.getElementById("ref-general-body");
+    if (generalBody) {
+      generalBody.innerHTML = rowsFor("general")
+        .map((a) => `<tr><td>${a.ref}</td><td>${fmtAssumpValue(a)}</td><td style="text-align:left">${a.label}</td></tr>`)
+        .join("");
+    }
   }
 
   // ---------------- Duct rows ----------------
@@ -284,28 +336,68 @@
     const wasteLabelEl = document.getElementById("waste-row-label");
     if (wasteLabelEl) wasteLabelEl.textContent = `+ Waste/Contingency Allowance (A-15 = ${Math.round(wasteFactor * 100)}%) →`;
 
-    const totalArea = SMACNA.gaFields.reduce((s, g) => s + totals[g], 0);
-    document.getElementById("sum-area").textContent = totalArea.toFixed(2);
-    document.getElementById("sum-weight").textContent = (totals.weight * (1 + wasteFactor)).toFixed(1);
-    // NOTE (flagged, unchanged): this mirrors the source app's label — it is actually
-    // the total rod-insert count (hangerCount × A-11), not the hanger count itself.
-    document.getElementById("sum-hangers").textContent = totals.insert;
+    const nIncomplete = document.querySelectorAll("#input-body tr.data-row.incomplete").length;
+    document.getElementById("incomplete-warning").style.display = nIncomplete > 0 ? "block" : "none";
+
+    renderSummary(totals, wasteFactor);
+  }
+
+  // ---------------- Summary tab (item 9: Final Takeoff primary, Net/allowance as audit detail) ----------------
+  function renderSummary(totals, wasteFactor) {
+    const body = document.getElementById("summary-body");
+    if (!body) return;
+    const sheetArea = (assumptions.A12.w / 1000) * (assumptions.A12.h / 1000);
+
+    const gaugeBoxes = SMACNA.gaFields
+      .map((g, i) => ({ g, label: SMACNA.gaugeInfo[i].label, net: totals[g] }))
+      .filter((x) => x.net > 0)
+      .map((x) => {
+        const waste = x.net * wasteFactor;
+        const fin = x.net + waste;
+        const sheets = Math.ceil(fin / sheetArea);
+        return `<div class="summary-primary-box">
+          <div class="sp-label">${x.label}</div>
+          <div class="sp-value">${fin.toFixed(2)} sq m &nbsp;·&nbsp; ${sheets} sheets</div>
+          <div class="sp-audit">Net ${x.net.toFixed(2)} + Waste/Contingency ${waste.toFixed(2)} = Final ${fin.toFixed(2)} sq m</div>
+        </div>`;
+      })
+      .join("");
+
+    const lineBox = (field) => {
+      const def = RECT_COL_DEFS.find((c) => c.field === field);
+      const net = totals[field];
+      const isContingency = SMACNA.contingencyFields.includes(field);
+      const waste = net * wasteFactor;
+      const fin = net + waste;
+      const dec = SMACNA.decimalCols.includes(field);
+      const f = (v) => (dec ? v.toFixed(2) : Math.round(v));
+      return `<div class="summary-primary-box">
+        <div class="sp-label">${def.label}</div>
+        <div class="sp-value">${f(fin)} ${def.unit}</div>
+        <div class="sp-audit">Net ${f(net)} + ${isContingency ? "Contingency" : "Waste"} ${f(waste)}</div>
+      </div>`;
+    };
+    const miscFields = ["insulation", "sealant", "adhesive", "pins", "tape", "strap", "corner"];
+    const hangerFields = ["angle", "rod", "insert", "nuts", "washers"];
 
     const nRows = document.querySelectorAll("#input-body tr.data-row:not(.incomplete)").length;
-    const nIncomplete = document.querySelectorAll("#input-body tr.data-row.incomplete").length;
-    document.getElementById("rows-ok").textContent =
-      nRows + " duct run(s) computed successfully. Net, waste/contingency, and Final Takeoff totals update live as you edit any cell above.";
-    document.getElementById("incomplete-warning").style.display = nIncomplete > 0 ? "block" : "none";
+
+    body.innerHTML = `
+      <div class="subsection-header">Gauge Summary (Final Takeoff Area &amp; Est. No. of Sheets are the primary procurement figures; Net + allowance shown as audit detail)</div>
+      <div class="summary-grid">${gaugeBoxes || '<div class="summary-primary-box">No gauge totals — enter duct runs above.</div>'}</div>
+
+      <div class="subsection-header">Miscellaneous &amp; Consumables</div>
+      <div class="summary-grid">${miscFields.map(lineBox).join("")}</div>
+
+      <div class="subsection-header">Hangers &amp; Supports</div>
+      <div class="warning-box">⚠ Rod diameter (A-13: ${assumptions.A13}) and trapeze angle size (A-14: ${assumptions.A14}) are manually selected estimating assumptions — <b>NOT</b> automatically SMACNA-compliant sizing. Final support sizing must be verified by the project engineer against the applicable SMACNA edition before fabrication or installation.</div>
+      <div class="summary-grid">${hangerFields.map(lineBox).join("")}</div>
+
+      <div class="ok-box" id="rows-ok">${nRows} duct run(s) computed successfully. Final Takeoff totals (Net + Waste/Contingency Allowance, A-15) update live as you edit any cell above.</div>
+    `;
   }
 
   // ---------------- Print report (professional PDF, not a screenshot of the app) ----------------
-  const TIER_LABELS = {
-    existing: { badge: "🗂️ Existing App/Workbook Reference", note: "Inherited from the app's original source workbook — not independently re-verified against a primary SMACNA document in this session." },
-    secondary: { badge: "🔎 Secondary-Sourced Guidance", note: "Aggregated from published secondary sources, not the primary SMACNA manual — confirm exact values against your SMACNA 3rd Ed. before use." },
-    assumption: { badge: "📐 Engineering/Estimating Assumption", note: "Project-adjustable estimating judgment, not code-mandated." },
-    general: { badge: "📖 General Material/Industry Reference", note: "Common physical/product constant, not a SMACNA-specific citation." }
-  };
-
   function pv(id) {
     const el = document.getElementById(id);
     return el ? el.value : "";
@@ -321,7 +413,6 @@
     const container = document.getElementById("print-report");
     if (!container) return;
     const { totals, wasteFactor } = computeGrandTotals();
-    const final = (v) => v * (1 + wasteFactor);
     const sheetArea = (assumptions.A12.w / 1000) * (assumptions.A12.h / 1000);
 
     // ---- Duct Identification & Results (one combined table for the report) ----
@@ -481,6 +572,7 @@
     renderAssumptions();
     renderFormulaRef();
     renderGaugeTable();
+    renderReferenceTiers();
     window.addRow("SA-01", "SA", 400, 300, 10);
     window.addRow("SA-02", "SA", 600, 400, 8);
     window.addRow("SA-03", "SA", 900, 600, 12);
