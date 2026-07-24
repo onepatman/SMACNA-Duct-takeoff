@@ -7,15 +7,88 @@
 const SMACNA = (function () {
   "use strict";
 
-  // ---- SMACNA Table 1-7 gauge brackets (Low Pressure Class) ----
+  // ---- Gauge → thickness/weight reference chart ----
+  // Existing app reference (thickness mm / weight kg per sq m per gauge
+  // number) — inherited from the app's original source workbook, not
+  // independently re-verified against a primary SMACNA document. This is
+  // now purely a label → thickness/weight lookup; WHICH gauge applies to a
+  // given duct dimension is decided by RECT_GAUGE_TABLES below (SMACNA
+  // Table 6-1 / 6-2), not by this array.
   const gaugeInfo = [
-    { label: "ga 26", min: 0,    max: 300,    thickness: 0.55, weight: 4.34,  ref: "SMACNA T1-7" },
-    { label: "ga 24", min: 301,  max: 450,    thickness: 0.70, weight: 5.52,  ref: "SMACNA T1-7" },
-    { label: "ga 22", min: 451,  max: 1350,   thickness: 0.85, weight: 6.70,  ref: "SMACNA T1-7" },
-    { label: "ga 20", min: 1351, max: 2100,   thickness: 1.00, weight: 7.88,  ref: "SMACNA T1-7" },
-    { label: "ga 18", min: 2101, max: 3050,   thickness: 1.30, weight: 10.24, ref: "SMACNA T1-7" },
-    { label: "ga 16", min: 3051, max: 999999, thickness: 1.60, weight: 12.60, ref: "SMACNA T1-7" }
+    { label: "ga 26", thickness: 0.55, weight: 4.34,  ref: "Existing app reference" },
+    { label: "ga 24", thickness: 0.70, weight: 5.52,  ref: "Existing app reference" },
+    { label: "ga 22", thickness: 0.85, weight: 6.70,  ref: "Existing app reference" },
+    { label: "ga 20", thickness: 1.00, weight: 7.88,  ref: "Existing app reference" },
+    { label: "ga 18", thickness: 1.30, weight: 10.24, ref: "Existing app reference" },
+    { label: "ga 16", thickness: 1.60, weight: 12.60, ref: "Existing app reference" }
   ];
+
+  // ---- SMACNA Table 6-1 / 6-2 — rectangular duct minimum gauge + transverse
+  // reinforcement, 2" w.g. static pressure (positive or negative), by
+  // standard duct section length. Provided directly by the user from
+  // scanned pages of SMACNA HVAC Duct Construction Standards — Metal and
+  // Flexible, 2nd Edition (transcribed 2026-07-24). This is genuine
+  // primary-source data — not an estimate or secondary aggregation — but
+  // it was transcribed from a photograph, so spot-check any bracket that
+  // materially affects fabrication/procurement against your own copy.
+  // Duct Dim. is the manual's native inch bracket; maxMm is that same
+  // upper bound converted to millimeters (1 in = 25.4 mm) since this app's
+  // inputs are metric. Reinf. Spacing / Reinf. Code Grade are carried for
+  // reference only — this app does not yet compute a transverse/
+  // intermediate reinforcement material quantity from them (Table 6-1/6-2
+  // columns 5–12, the actual slip/standing-seam/angle/zee sizes, were not
+  // transcribed in this pass).
+  const RECT_GAUGE_TABLES = {
+    "4ft": {
+      label: "4 ft duct lengths",
+      tableRef: "SMACNA Table 6-1",
+      brackets: [
+        { ductDim: "10\" dn",   maxMm: 254,  gauge: "ga 26", reinfSpacing: "None", reinfCode: "—" },
+        { ductDim: "11\"–20\"", maxMm: 508,  gauge: "ga 26", reinfSpacing: "4\"",  reinfCode: "C" },
+        { ductDim: "21\"–28\"", maxMm: 711,  gauge: "ga 26", reinfSpacing: "4\"",  reinfCode: "D" },
+        { ductDim: "29\"–30\"", maxMm: 762,  gauge: "ga 26", reinfSpacing: "4\"",  reinfCode: "E" },
+        { ductDim: "31\"–42\"", maxMm: 1067, gauge: "ga 24", reinfSpacing: "4\"",  reinfCode: "F" },
+        { ductDim: "43\"–48\"", maxMm: 1219, gauge: "ga 22", reinfSpacing: "4\"",  reinfCode: "G" },
+        { ductDim: "49\"–60\"", maxMm: 1524, gauge: "ga 24", reinfSpacing: "2\"",  reinfCode: "F" },
+        { ductDim: "61\"–72\"", maxMm: 1829, gauge: "ga 24", reinfSpacing: "2\"",  reinfCode: "H" },
+        { ductDim: "73\"–84\"", maxMm: 2134, gauge: "ga 22", reinfSpacing: "2\"",  reinfCode: "I" },
+        { ductDim: "85\"–96\"", maxMm: 2438, gauge: "ga 22", reinfSpacing: "2\"",  reinfCode: "I" }
+      ]
+    },
+    "5ft": {
+      label: "5 ft duct lengths",
+      tableRef: "SMACNA Table 6-2",
+      brackets: [
+        { ductDim: "10\" dn",   maxMm: 254,  gauge: "ga 26", reinfSpacing: "None",   reinfCode: "—" },
+        { ductDim: "11\"–20\"", maxMm: 508,  gauge: "ga 26", reinfSpacing: "5'",     reinfCode: "C" },
+        { ductDim: "21\"–26\"", maxMm: 660,  gauge: "ga 26", reinfSpacing: "5'",     reinfCode: "D" },
+        { ductDim: "27\"–30\"", maxMm: 762,  gauge: "ga 24", reinfSpacing: "5'",     reinfCode: "E" },
+        { ductDim: "31\"–38\"", maxMm: 965,  gauge: "ga 22", reinfSpacing: "5'",     reinfCode: "F" },
+        { ductDim: "39\"–54\"", maxMm: 1372, gauge: "ga 24", reinfSpacing: "2-1/2'", reinfCode: "F" },
+        { ductDim: "55\"–60\"", maxMm: 1524, gauge: "ga 24", reinfSpacing: "2-1/2'", reinfCode: "G" },
+        { ductDim: "61\"–72\"", maxMm: 1829, gauge: "ga 22", reinfSpacing: "2-1/2'", reinfCode: "H" },
+        { ductDim: "73\"–84\"", maxMm: 2134, gauge: "ga 22", reinfSpacing: "2-1/2'", reinfCode: "I" },
+        { ductDim: "85\"–96\"", maxMm: 2438, gauge: "ga 20", reinfSpacing: "2-1/2'", reinfCode: "I" }
+      ]
+    }
+  };
+
+  // ---- SMACNA Table 6-7, Section C (Horizontal Ducts – Trapeze-Type
+  // Supports) — same source/provenance as RECT_GAUGE_TABLES above. Governs
+  // A-13 (hanger rod diameter) / A-14 (trapeze angle size) below. Each
+  // bracket also allows a fixed 1"×1"×1/8" angle as an alternative to the
+  // round-rod hanger (not modeled separately — A-13's options are the
+  // round-rod path).
+  const DUCT_SUPPORT_TABLE = {
+    tableRef: "SMACNA Table 6-7, Section C (Horizontal Ducts – Trapeze-Type Supports)",
+    altHangerNote: "Each bracket also allows a fixed 1\"×1\"×1/8\" angle as an alternative to the round-rod hanger shown.",
+    brackets: [
+      { maxDim: "36\"", maxMm: 914,  angle: "1-1/2\"×1-1/2\"×1/8\"", rod: "1/4\" round rod" },
+      { maxDim: "48\"", maxMm: 1219, angle: "2\"×2\"×1/8\"",         rod: "1/4\" round rod" },
+      { maxDim: "60\"", maxMm: 1524, angle: "2\"×2\"×1/8\"",         rod: "5/16\" round rod" },
+      { maxDim: "84\"", maxMm: 2134, angle: "2\"×2\"×1/8\"",         rod: "3/8\" round rod" }
+    ]
+  };
 
   // ---- Material coverage assumptions (A-01 ... A-15) ----
   // tier: which of the four Gauge & References categories this belongs to.
@@ -37,12 +110,12 @@ const SMACNA = (function () {
     { ref: "A-10", field: "A10", unit: "m",            label: "Threaded rod length per rod (ceiling drop / slab clearance)", def: 0.6, min: 0.3, max: 3.0, typical: 0.6, guidance: "Measure from as-built ceiling/slab clearance — no universal value applies.", source: "Estimating assumption — project-specific", locked: false, tier: "assumption" },
     { ref: "A-11", field: "A11", unit: "pcs / hanger", label: "Number of threaded rods per hanger (trapeze type)",      def: 2,     source: "Existing app reference — inherited from original source workbook, not independently re-verified", locked: true, tier: "existing" },
     { ref: "A-12", field: "A12", unit: "mm × mm",      label: "Sheet size (for Est. No. of Sheets in Summary)",          def: { w: 1219, h: 2438 }, type: "dual", source: "Estimating assumption — confirm actual supplier sheet size", locked: false, tier: "assumption" },
-    { ref: "A-13", field: "A13", unit: "rod diameter", label: "Hanger rod diameter",                                     def: "3/8\" (9.5 mm)", type: "select", options: ["3/8\" (9.5 mm)", "1/2\" (12.7 mm)", "5/8\" (16 mm)"],
-      guidance: "Rule of thumb from published secondary references (not the primary SMACNA manual, which I could not access in this session): 3/8\" rod typically sufficient up to ~1219mm duct half-perimeter, 1/2\" beyond. Confirm against your SMACNA 3rd Ed. manual before fabrication.",
-      source: "Secondary-sourced guidance — verify against SMACNA manual", locked: false, tier: "secondary" },
-    { ref: "A-14", field: "A14", unit: "angle size",   label: "Trapeze angle size",                                      def: "1\"×1\"×1/8\"", type: "select", options: ["1\"×1\"×1/8\"", "1-1/2\"×1-1/2\"×1/8\"", "2\"×2\"×3/16\""],
-      guidance: "Rule of thumb from published secondary references: angle size scales with duct size/pressure class, commonly 1\"×1\"×1/8\" up to 2\"×2\"×3/16\" for larger/higher-pressure duct. Confirm against your SMACNA 3rd Ed. manual before fabrication.",
-      source: "Secondary-sourced guidance — verify against SMACNA manual", locked: false, tier: "secondary" },
+    { ref: "A-13", field: "A13", unit: "rod diameter", label: "Hanger rod diameter",                                     def: "3/8\" (9.5 mm)", type: "select", options: ["1/4\" (6.4 mm)", "5/16\" (7.9 mm)", "3/8\" (9.5 mm)"],
+      guidance: "SMACNA Table 6-7, Section C (Horizontal Ducts – Trapeze-Type Supports): 1/4\" rod for duct up to 48\", 5/16\" up to 60\", 3/8\" up to 84\" (largest side/diameter of the duct). This is one project-wide choice, not auto-varied per run — match it to your project's largest duct run, or pick conservatively.",
+      source: "SMACNA Table 6-7, Section C — provided directly by user from source pages, transcribed 2026-07-24", locked: false, tier: "primary" },
+    { ref: "A-14", field: "A14", unit: "angle size",   label: "Trapeze angle size",                                      def: "2\"×2\"×1/8\" (51×51×3.2 mm)", type: "select", options: ["1-1/2\"×1-1/2\"×1/8\" (38×38×3.2 mm)", "2\"×2\"×1/8\" (51×51×3.2 mm)"],
+      guidance: "SMACNA Table 6-7, Section C (Horizontal Ducts – Trapeze-Type Supports): 1-1/2\"×1-1/2\"×1/8\" angle for duct up to 36\", 2\"×2\"×1/8\" for 37\"–84\". This is one project-wide choice, not auto-varied per run — match it to your project's largest duct run.",
+      source: "SMACNA Table 6-7, Section C — provided directly by user from source pages, transcribed 2026-07-24", locked: false, tier: "primary" },
     { ref: "A-15", field: "A15", unit: "factor (–)",   label: "Waste / contingency factor (applied to all takeoff quantities)", def: 0.20, min: 0.10, max: 0.30, typical: 0.20, guidance: "20% is a common estimating default; adjust per project procurement/cutting-waste history.", source: "Estimating assumption — project contingency/waste allowance", locked: false, tier: "assumption" },
     { ref: "A-16", field: "A16", unit: "× diameter",   label: "Round duct fitting equivalent length factor (for Fittings & Accessories surface-area estimate)", def: 1.5, min: 1.0, max: 3.0, typical: 1.5, guidance: "Rough estimating shortcut only — NOT a verified SMACNA fitting-dimension source. Approximates each fitting's developed surface area as Circumference × (A-16 × Diameter), so it can feed into Insulation/Sealant/Adhesive/Duct Pin totals automatically instead of being a pure ordering-quantity line. Actual fitting geometry (gore count, taper length) varies by manufacturer — verify against actual fabrication drawings before procurement.", source: "Estimating assumption — rough approximation, verify against fabrication drawings", locked: false, tier: "assumption" }
   ];
@@ -66,10 +139,10 @@ const SMACNA = (function () {
       variables: "Perimeter (m) from above; Length = duct run length (m)",
       example: "Perimeter 2.00 m, Length 10 m → Area = 2.00 × 10 = 20.00 sq m",
       note: "Outer surface area; basis for every material quantity below.", source: "assumption" },
-    { name: "GAUGE ASSIGNMENT", formula: "Gauge = bracket of Table 1-7 containing MAX(Width, Depth)",
-      variables: "Table 1-7 brackets: ga26 ≤300mm, ga24 301–450mm, ga22 451–1350mm, ga20 1351–2100mm, ga18 2101–3050mm, ga16 >3050mm",
-      example: "MAX(600, 400) = 600mm → falls in 451–1350mm bracket → ga 22; the run's full 20.00 sq m Area is assigned to the ga 22 column",
-      note: "ga 16 (>3050mm) column wired in this version — the original source workbook defined the bracket but never connected a takeoff column to it.", source: "existing" },
+    { name: "GAUGE ASSIGNMENT", formula: "Gauge = bracket of SMACNA Table 6-1 (4 ft) or 6-2 (5 ft) containing MAX(Width, Depth), by Tab 1's Standard Duct Section Length",
+      variables: "Table 6-1 (4 ft, 2\" w.g.): ga26 ≤30\", ga24 31\"–42\", ga22 43\"–48\", ga24 49\"–72\", ga22 73\"–96\". Table 6-2 (5 ft, 2\" w.g.): ga26 ≤26\", ga24 27\"–30\", ga22 31\"–38\", ga24 39\"–60\", ga22 61\"–84\", ga20 85\"–96\". See Tab 3, Verified Primary tier, for the full bracket-by-bracket breakdown including reinforcement spacing/code.",
+      example: "MAX(600, 400) = 600mm ≈ 23.6\" → Table 6-1 bracket 21\"–28\" → ga 26; the run's full 20.00 sq m Area is assigned to the ga 26 column",
+      note: "Gauge assignment is now sourced from real SMACNA Table 6-1/6-2 (provided directly by the user, transcribed 2026-07-24), replacing the app's earlier unverified single bracket table. Both tables stop at 96\" (2438mm) — a run exceeding that falls back to the largest documented bracket's gauge with a warning, not a verified value; use the manual gauge override for anything past 96\".", source: "primary" },
     { name: "INSULATION", formula: "Insulation (sq m) = Area × 1.0",
       variables: "Area (sq m) from above",
       example: "20.00 × 1.0 = 20.00 sq m",
@@ -123,7 +196,7 @@ const SMACNA = (function () {
       example: "6 × 2 × 2 = 24 pcs",
       note: "2 washers per rod: one under the bearing nut, one at the angle bracket.", source: "existing" },
     { name: "EST. SHEET METAL WEIGHT", formula: "Weight (kg) = Area(assigned gauge) × Gauge Unit Weight",
-      variables: "Gauge Unit Weight from Table 1-7 (kg/sq m), e.g. ga 22 = 6.70 kg/sq m",
+      variables: "Gauge Unit Weight from the gauge thickness/weight chart (existing app reference, kg/sq m), e.g. ga 22 = 6.70 kg/sq m",
       example: "20.00 × 6.70 = 134.00 kg",
       note: "Added in this fillable version for quick steel-order weight estimates; not part of the original source workbook.", source: "existing" },
     { name: "WASTE / CONTINGENCY ALLOWANCE", formula: "Allowance = Net Quantity × A-15",
@@ -149,28 +222,49 @@ const SMACNA = (function () {
     return a;
   }
 
-  function gaugeIndex(longerSide) {
-    for (let i = 0; i < gaugeInfo.length; i++) {
-      if (longerSide >= gaugeInfo[i].min && longerSide <= gaugeInfo[i].max) return i;
+  /**
+   * Looks up the SMACNA Table 6-1/6-2 bracket for a given longer-side
+   * dimension (mm). Returns the matched bracket plus an outOfRange flag —
+   * both tables stop at 96" (2438mm); anything beyond that falls back to
+   * the largest documented bracket's gauge, flagged as extrapolated rather
+   * than presented as a verified value (nothing past 96" was in the
+   * source pages provided).
+   */
+  function gaugeBracket(longerSide, sectionLength) {
+    const table = RECT_GAUGE_TABLES[sectionLength] || RECT_GAUGE_TABLES["4ft"];
+    for (let i = 0; i < table.brackets.length; i++) {
+      if (longerSide <= table.brackets[i].maxMm) {
+        return { bracket: table.brackets[i], outOfRange: false, tableRef: table.tableRef };
+      }
     }
-    return gaugeInfo.length - 1;
+    const last = table.brackets[table.brackets.length - 1];
+    return { bracket: last, outOfRange: true, tableRef: table.tableRef };
+  }
+
+  function gaugeIndex(longerSide, sectionLength) {
+    const { bracket } = gaugeBracket(longerSide, sectionLength || "4ft");
+    const idx = gaugeInfo.findIndex((g) => g.label === bracket.gauge);
+    return idx >= 0 ? idx : 0;
   }
 
   /**
    * Compute one duct run. Returns null (incomplete) if W/D/L are missing or <= 0.
    * NOTE: preserved exactly from source, including rounding order.
    * gaugeOverride (optional): index into gaugeInfo, from the per-row manual
-   * override used for Medium/High/Custom pressure class runs — Table 1-7
-   * automation is verified only for Low Pressure, so anything else must be a
-   * user-confirmed manual choice rather than a false auto-lookup.
+   * override used for Medium/High/Custom pressure class runs — Table 6-1/6-2
+   * automation is verified only for Low Pressure (2" w.g.), so anything else
+   * must be a user-confirmed manual choice rather than a false auto-lookup.
+   * sectionLength: "4ft" (Table 6-1) or "5ft" (Table 6-2) — Tab 1 project setting.
    */
-  function computeRow(w, d, l, assumptions, gaugeOverride) {
+  function computeRow(w, d, l, assumptions, gaugeOverride, sectionLength) {
     if (!w || !d || !l || w <= 0 || d <= 0 || l <= 0) return null;
 
     const perimeter = 2 * (w / 1000 + d / 1000);
     const area = perimeter * l;
     const longer = Math.max(w, d);
-    const gi = gaugeOverride != null ? gaugeOverride : gaugeIndex(longer);
+    const { outOfRange, tableRef } = gaugeBracket(longer, sectionLength || "4ft");
+    const gi = gaugeOverride != null ? gaugeOverride : gaugeIndex(longer, sectionLength);
+    const gaugeOutOfRange = gaugeOverride == null && outOfRange;
 
     const insulation = area;
     const sealant = Math.round((area / assumptions.A01) * 100) / 100;
@@ -191,7 +285,7 @@ const SMACNA = (function () {
     gaFields.forEach((f, i) => (byGauge[f] = i === gi ? area : null));
 
     return {
-      perimeter, area, gaugeIndex: gi, byGauge,
+      perimeter, area, gaugeIndex: gi, byGauge, gaugeOutOfRange, gaugeTableRef: tableRef,
       insulation, sealant, adhesive, pins, tape, strap, corner,
       hangerCount, angle, rod, insert, nuts, washers, weight
     };
@@ -214,8 +308,8 @@ const SMACNA = (function () {
   }
 
   return {
-    gaugeInfo, assumptionsMeta, formulaRef, decimalCols, gaFields, contingencyFields,
-    defaultAssumptions, gaugeIndex, computeRow, sumRows, sumGauge
+    gaugeInfo, RECT_GAUGE_TABLES, DUCT_SUPPORT_TABLE, assumptionsMeta, formulaRef, decimalCols, gaFields, contingencyFields,
+    defaultAssumptions, gaugeIndex, gaugeBracket, computeRow, sumRows, sumGauge
   };
 })();
 
@@ -263,7 +357,7 @@ const SMACNA_ROUND = (function () {
     { name: "HANGER COUNT / ANGLE / ROD / INSERTS / NUTS / WASHERS", formula: "Same spacing-based formulas as rectangular, substituting Diameter for Width",
       variables: "A-09/A-10/A-11/A-13/A-14 — same global assumptions as rectangular",
       example: "Angle (m) = Hangers × (Diameter÷1000 + 0.4) — same clearance-allowance methodology as rectangular's angle formula",
-      note: "Same fixed-spec hanger assumptions as rectangular (A-13/A-14 rod/angle size are estimating assumptions, not size-varying SMACNA lookups).", source: "assumption" },
+      note: "Same fixed-spec hanger assumptions as rectangular (A-13/A-14 rod/angle size now come from SMACNA Table 6-7, Section C — but as one project-wide manual pick, not auto-varied per run diameter).", source: "assumption" },
     { name: "FITTINGS & ACCESSORIES — ESTIMATED SURFACE AREA", formula: "Fitting Area (sq m) = Circumference × (A-16 × Diameter÷1000) × Quantity",
       variables: "A-16 = fitting equivalent-length factor (typical 1.5× diameter, range 1.0–3.0); Circumference = π × Diameter÷1000",
       example: "Elbow 90°, 300mm diameter, qty 1 → Circumference 0.942 m × (1.5 × 0.300) = 0.942 × 0.45 = 0.42 sq m",

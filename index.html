@@ -50,7 +50,7 @@
 <div class="tabs no-print">
   <button class="tab-btn active" onclick="showTab(0)">1 · Project &amp; Assumptions</button>
   <button class="tab-btn" onclick="showTab(1)">2 · Duct Takeoff Calculator</button>
-  <button class="tab-btn" onclick="showTab(2)">3 · Gauge Reference (Table 1-7)</button>
+  <button class="tab-btn" onclick="showTab(2)">3 · Gauge Reference (Table 6-1/6-2)</button>
   <button class="tab-btn" onclick="showTab(3)">4 · Formula Reference</button>
 </div>
 
@@ -87,8 +87,16 @@
       <input type="number" step="any" id="p-design-pressure" placeholder="e.g. 1.5">
       <div style="font-size:.68rem;color:#607D8B;font-style:italic;margin-top:3px">The actual engineered value for this system — independent of which class bucket it falls into above.</div>
     </div>
+    <div class="proj-field">
+      <label>STANDARD DUCT SECTION LENGTH</label>
+      <select id="p-section-length" onchange="onSectionLengthChange()">
+        <option value="4ft" selected>4 ft (SMACNA Table 6-1)</option>
+        <option value="5ft">5 ft (SMACNA Table 6-2)</option>
+      </select>
+      <div style="font-size:.68rem;color:#607D8B;font-style:italic;margin-top:3px">Selects which SMACNA gauge/reinforcement table (6-1 or 6-2, both 2" w.g. static) drives the automatic gauge assignment in Tab 2 — see Tab 3, Verified Primary tier, for the full bracket breakdown.</div>
+    </div>
   </div>
-  <div class="warning-box" id="pressure-class-warning" style="display:none">⚠ Gauge/reinforcement automation in this app is wired only to the existing Table 1-7 reference (Low Pressure) — itself an inherited app reference, not independently confirmed against a primary SMACNA document here. Medium/High Pressure are classification labels only — no gauge or reinforcement table backs them in this app at all. Use the manual gauge override in the Results table (Tab 2) for any run outside Low Pressure.</div>
+  <div class="warning-box" id="pressure-class-warning" style="display:none">⚠ Gauge automation in this app is wired to SMACNA Table 6-1/6-2 for Low Pressure (2" w.g.) only. Medium/High Pressure are classification labels only — no gauge or reinforcement table backs them in this app at all. Use the manual gauge override in the Results table (Tab 2) for any run outside Low Pressure.</div>
 
   <div class="section-header"><span class="badge">2</span> MATERIAL COVERAGE ASSUMPTIONS</div>
   <div class="legend-box">
@@ -119,7 +127,7 @@
 
   <div id="rect-calc-section">
   <div class="section-header"><span class="badge">1</span> DUCT IDENTIFICATION &amp; GEOMETRY</div>
-  <div class="legend-box">Enter <b>Width</b> and <b>Depth</b> in millimeters and <b>Length</b> in meters for each duct run. Gauge, materials, and hangers compute automatically per SMACNA Table 1-7 and Table 4-1.</div>
+  <div class="legend-box">Enter <b>Width</b> and <b>Depth</b> in millimeters and <b>Length</b> in meters for each duct run. Gauge computes automatically per SMACNA Table 6-1/6-2 (Tab 1's Standard Duct Section Length selection); hangers use Table 4-1 spacing (A-09).</div>
 
   <div class="action-bar no-print">
     <button class="btn btn-add" onclick="addRow()">+ Add Duct Run</button>
@@ -130,7 +138,7 @@
   <div class="formula-box">
     <b>Core formulas used per run:</b><br>
     Perimeter (m) = 2 × (Width÷1000 + Depth÷1000) &nbsp;|&nbsp; Area (sq m) = Perimeter × Length<br>
-    Gauge = SMACNA T1-7 bracket of MAX(Width, Depth) &nbsp;|&nbsp; Hangers = ROUNDUP(Length ÷ 2.4 + 1, 0)
+    Gauge = SMACNA Table 6-1/6-2 bracket of MAX(Width, Depth) &nbsp;|&nbsp; Hangers = ROUNDUP(Length ÷ 2.4 + 1, 0)
   </div>
 
   <div class="subsection-header">1a &middot; Input Parameters — Duct Runs (fill)</div>
@@ -149,7 +157,7 @@
     <thead>
       <tr>
         <th class="grp-dim" colspan="4">RUN / COMPUTED DIMENSIONS</th>
-        <th class="grp-gauge" colspan="6">SHEET METAL BY GAUGE (sq m) — SMACNA T1-7</th>
+        <th class="grp-gauge" colspan="6">SHEET METAL BY GAUGE (sq m) — SMACNA Table 6-1/6-2</th>
         <th class="grp-ins" colspan="7">INSULATION &amp; ACCESSORIES</th>
         <th class="grp-hng" colspan="5">HANGER SUPPORT HARDWARE</th>
         <th class="grp-wt" colspan="1">EST. WEIGHT</th>
@@ -190,6 +198,7 @@
   </div>
 
   <div class="warning-box" id="incomplete-warning" style="display:none">⚠ Rows highlighted in red are missing Width, Depth, or Length and are excluded from totals until completed.</div>
+  <div class="warning-box" id="gauge-outrange-warning" style="display:none">⚠ One or more rows (marked ⚠ in the gauge columns) have a dimension exceeding SMACNA Table 6-1/6-2's documented 96" (2438mm) range. The gauge shown is extrapolated from the largest bracket, not a verified table value — use the manual gauge override for these runs.</div>
 
   <div class="section-header"><span class="badge">2</span> SUMMARY</div>
   <div id="summary-body"></div>
@@ -279,16 +288,20 @@
 <!-- ================= TAB 3 : GAUGE &amp; REFERENCES ================= -->
 <div class="tab-content" id="tab-2">
   <div class="section-header"><span class="badge">1</span> TECHNICAL REFERENCE — ORGANIZED BY VERIFICATION TIER</div>
-  <div class="legend-box">Every figure this calculator relies on is classified into one of four tiers below, based on how it was actually sourced in this session — not all of them carry the same weight, and the tier tells you which is which. Outbound access to full SMACNA reference documents was blocked by this environment's network policy, so "Existing App/Workbook Reference" and "Secondary-Sourced Guidance" are <b>not</b> independently verified against a primary SMACNA document here.</div>
+  <div class="legend-box">Every figure this calculator relies on is classified into one of five tiers below, based on how it was actually sourced — not all of them carry the same weight, and the tier tells you which is which. Outbound access to full SMACNA reference documents was blocked by this environment's network policy, so only the "Verified Primary" tier below comes from an actual SMACNA source page (supplied directly by the user); "Existing App/Workbook Reference" and "Secondary-Sourced Guidance" remain <b>not</b> independently verified.</div>
+
+  <div class="ref-tier-header tier-primary">✅ Verified Primary SMACNA Reference</div>
+  <div class="ref-tier-note">Provided directly by the user from scanned pages of SMACNA HVAC Duct Construction Standards — Metal and Flexible, 2nd Edition (transcribed 2026-07-24). Genuine primary-source data — but transcribed from a photograph, so spot-check any figure that materially affects fabrication/procurement against your own copy.</div>
+  <div class="subsection-header">Gauge Selection — SMACNA Table 6-1 / 6-2 (Rectangular, 2" w.g. static)</div>
+  <div class="legend-box">Gauge is selected by the <b>LONGER side</b> = MAX(Width, Depth), against whichever table (6-1 or 6-2) matches Tab 1's Standard Duct Section Length setting. Both tables stop at 96" (2438mm) — see Tab 2's out-of-range warning for anything larger.</div>
+  <div id="gauge-ref-body"></div>
+  <div class="subsection-header">Duct Support — SMACNA Table 6-7, Section C (Horizontal Trapeze-Type)</div>
+  <div id="duct-support-ref-body"></div>
+  <div class="subsection-header">Assumption values in this tier</div>
+  <table class="ref-table"><tr><th>Ref.</th><th>Value</th><th>Description</th><th>Guidance</th></tr><tbody id="ref-primary-body"></tbody></table>
 
   <div class="ref-tier-header tier-existing">🗂️ Existing App/Workbook Reference</div>
   <div class="ref-tier-note">Inherited from the app's pre-existing source workbook — not independently re-verified against a primary SMACNA document in this session.</div>
-  <div class="subsection-header">Gauge Selection — Table 1-7 (Low Pressure Class)</div>
-  <div class="legend-box">Gauge is selected by the <b>LONGER side</b> = MAX(Width, Depth). Boundaries below are extended through <b>ga 16</b> (&gt;3050 mm) — the source workbook's gauge table listed this row, but the takeoff sheet's column for it was missing; this version wires a "ga 16" column so oversized ducts are no longer left uncosted.</div>
-  <table class="ref-table">
-    <tr><th>Item</th><th>Range (mm)</th><th>Gauge</th><th>Designation</th><th>Thickness (mm)</th><th>Weight (kg/m²)</th><th>SMACNA Ref.</th></tr>
-    <tbody id="gauge-ref-body"></tbody>
-  </table>
   <div class="subsection-header">Hanger Spacing — Table 4-1 (Low Pressure)</div>
   <table class="ref-table">
     <tr><th>Condition</th><th>Max Hanger Spacing</th><th>Rods per Trapeze Hanger</th></tr>

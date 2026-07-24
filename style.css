@@ -113,6 +113,7 @@ body{
 .ref-tier-header{font-weight:800; font-size:1rem; padding:10px 14px; margin:26px 0 2px; border-radius:3px 3px 0 0; color:#fff;}
 .ref-tier-note{font-size:.76rem; font-style:italic; color:#3C4B57; background:#FAFBFC; border:1px solid var(--border);
   border-top:none; padding:8px 14px; margin-bottom:10px;}
+.ref-tier-header.tier-primary{background:#2E7D32;}
 .ref-tier-header.tier-existing{background:#546E7A;}
 .ref-tier-header.tier-secondary{background:#7E57C2;}
 .ref-tier-header.tier-assumption{background:var(--accent-deep);}
@@ -178,6 +179,7 @@ tr.totals-row td{background:#DCEBF9; font-weight:700;}
 tr.waste-row td{background:#FCEFE1; font-weight:700;}
 tr.final-row td{background:#DCEDC8; font-weight:800; border-top:2px solid var(--navy);}
 tr.data-row.incomplete td{background:var(--warn-bg);}
+tr.data-row.gauge-outrange td.gauge-hit{background:#FFF3CD; color:#7A5B00; font-weight:700;}
 table.input-table{min-width:0;}
 .del-btn{background:var(--warn-border); color:#fff; border:none; border-radius:3px; padding:5px 9px; cursor:pointer; font-size:.72rem;}
 
