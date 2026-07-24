@@ -179,7 +179,7 @@ tr.totals-row td{background:#DCEBF9; font-weight:700;}
 tr.waste-row td{background:#FCEFE1; font-weight:700;}
 tr.final-row td{background:#DCEDC8; font-weight:800; border-top:2px solid var(--navy);}
 tr.data-row.incomplete td{background:var(--warn-bg);}
-tr.data-row.gauge-outrange td.gauge-hit{background:#FFF3CD; color:#7A5B00; font-weight:700;}
+tr.data-row.gauge-outrange td.gauge-hit,tr.data-row.gauge-outrange td.round-gauge-cell{background:#FFF3CD; color:#7A5B00; font-weight:700;}
 table.input-table{min-width:0;}
 .del-btn{background:var(--warn-border); color:#fff; border:none; border-radius:3px; padding:5px 9px; cursor:pointer; font-size:.72rem;}
 

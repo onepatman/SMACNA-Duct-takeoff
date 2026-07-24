@@ -318,16 +318,53 @@ const SMACNA = (function () {
    Deliberately separate from the SMACNA (rectangular) module above —
    round duct geometry/material takeoff must not share formulas with
    rectangular, per explicit review requirement. Round duct minimum
-   gauge is NOT auto-looked-up here (see Gauge & References tab,
-   Secondary-Sourced Guidance tier) — gauge is a manual per-run
-   selection, reusing SMACNA.gaugeInfo's thickness/weight-per-sqm
-   values since those are generic steel material properties
-   independent of duct shape.
+   gauge auto-looks-up against SMACNA Table 6-8 for Low Pressure
+   (<2" w.g.) only (see ROUND_GAUGE_TABLE below); a manual override
+   remains for anything the table doesn't cover. Weight still reuses
+   SMACNA.gaugeInfo's thickness/weight-per-sqm values since those are
+   generic steel material properties independent of duct shape.
    ============================================================ */
 const SMACNA_ROUND = (function () {
   "use strict";
 
   const fittingTypes = ["Elbow 90°", "Elbow 45°", "Tee", "Reducer", "Transition", "Collar", "End Cap", "Damper — Volume", "Damper — Fire", "Damper — Balancing"];
+
+  // ---- SMACNA Table 6-8 — round duct minimum gauge, Pressure <2" w.g.
+  // (Low Pressure) only, by max diameter. Provided directly by the user
+  // from the same source pages as RECT_GAUGE_TABLES/DUCT_SUPPORT_TABLE
+  // (SMACNA module), transcribed 2026-07-24. Deliberately NOT transcribed
+  // this pass: Flat-Oval shape (this app only models round duct), and the
+  // >2"–<10" w.g. Round/Spiral-Seam/Longitudinal-Seam/Welded-Fittings
+  // columns plus Girth Joints reinforcement — this app has no seam-type
+  // or pressure-band input to pick among those without guessing.
+  const ROUND_GAUGE_TABLE = {
+    tableRef: "SMACNA Table 6-8 (Round, Pressure <2\" w.g.)",
+    brackets: [
+      { maxDim: "Up to 9\"",    maxMm: 229,  gauge: "ga 26", aluminumGauge: "24 B&S" },
+      { maxDim: "Over 9–14\"",  maxMm: 356,  gauge: "ga 26", aluminumGauge: "24 B&S" },
+      { maxDim: "Over 14–23\"", maxMm: 584,  gauge: "ga 24", aluminumGauge: "22 B&S" },
+      { maxDim: "Over 23–37\"", maxMm: 940,  gauge: "ga 22", aluminumGauge: "20 B&S" },
+      { maxDim: "Over 37–51\"", maxMm: 1295, gauge: "ga 20", aluminumGauge: "18 B&S" },
+      { maxDim: "Over 51–61\"", maxMm: 1549, gauge: "ga 18", aluminumGauge: "16 B&S" },
+      { maxDim: "Over 61–84\"", maxMm: 2134, gauge: "ga 16", aluminumGauge: "14 B&S" }
+    ]
+  };
+
+  /**
+   * Looks up the SMACNA Table 6-8 bracket for a given diameter (mm).
+   * Same out-of-range handling as the rectangular gaugeBracket(): the
+   * table stops at 84" (2134mm); anything beyond falls back to the
+   * largest documented bracket's gauge, flagged rather than presented
+   * as verified.
+   */
+  function gaugeBracket(diameter) {
+    for (let i = 0; i < ROUND_GAUGE_TABLE.brackets.length; i++) {
+      if (diameter <= ROUND_GAUGE_TABLE.brackets[i].maxMm) {
+        return { bracket: ROUND_GAUGE_TABLE.brackets[i], outOfRange: false };
+      }
+    }
+    return { bracket: ROUND_GAUGE_TABLE.brackets[ROUND_GAUGE_TABLE.brackets.length - 1], outOfRange: true };
+  }
 
   const formulaRef = [
     { name: "CIRCUMFERENCE", formula: "Circumference (m) = π × Diameter ÷ 1000",
@@ -338,10 +375,10 @@ const SMACNA_ROUND = (function () {
       variables: "Circumference (m) from above; Length = length per piece (m); Quantity = number of identical pieces in this run",
       example: "Circumference 0.942 m, Length 5 m, Qty 1 → Area = 0.942 × 5 × 1 = 4.71 sq m",
       note: "Outer surface area; basis for every material quantity below.", source: "assumption" },
-    { name: "GAUGE — MANUAL SELECTION", formula: "(no formula — gauge is picked manually per run)",
-      variables: "—",
-      example: "e.g. select \"ga 22\" from the dropdown for a 300mm diameter run",
-      note: "Round duct minimum-gauge breakpoints (spiral vs. longitudinal seam, by diameter) were not verified against a primary SMACNA document in this session — automating this lookup would risk asserting an unverified structural requirement. See Gauge & References tab, Secondary-Sourced Guidance tier, for cited rule-of-thumb figures to inform your manual choice.", source: "secondary" },
+    { name: "GAUGE ASSIGNMENT", formula: "Gauge = bracket of SMACNA Table 6-8 (Round, <2\" w.g.) containing Diameter, unless manually overridden",
+      variables: "Table 6-8 brackets: ga26 ≤14\", ga24 15\"–23\", ga22 24\"–37\", ga20 38\"–51\", ga18 52\"–61\", ga16 62\"–84\"",
+      example: "Diameter 300mm ≈ 11.8\" → falls in ≤14\" bracket → ga 26",
+      note: "Only the <2\" w.g. (Low Pressure) column was transcribed — Table 6-8 also gives separate Flat-Oval and >2\"–<10\" w.g. Spiral/Longitudinal-Seam/Welded-Fittings values this app doesn't model (no seam-type or flat-oval input). The table stops at 84\" (2134mm); beyond that, or for Medium/High pressure, use the manual override dropdown.", source: "primary" },
     { name: "INSULATION / SEALANT / ADHESIVE / DUCT PINS", formula: "Same rate-based formulas as rectangular: Area×1.0, Area÷A-01, Area÷A-02, CEILING(Area×A-03)",
       variables: "A-01/A-02/A-03 — same assumptions as rectangular (Tab 1)",
       example: "Area 4.71 sq m → Insulation 4.71 sq m, Sealant 0.13 gal, Adhesive 0.19 gal, Pins 19 pcs",
@@ -370,7 +407,9 @@ const SMACNA_ROUND = (function () {
 
   /**
    * Compute one round duct run. Returns null (incomplete) if inputs missing/invalid.
-   * gaugeLabel: manual selection, e.g. "ga 22" — matched against SMACNA.gaugeInfo.
+   * gaugeLabel: "Auto" (or falsy) looks up SMACNA Table 6-8 (<2" w.g.) by
+   * diameter; anything else (e.g. "ga 22") is a manual override — matched
+   * against SMACNA.gaugeInfo.
    */
   function computeRow(diameter, length, qty, gaugeLabel, assumptions) {
     if (!diameter || !length || !qty || diameter <= 0 || length <= 0 || qty <= 0) return null;
@@ -397,11 +436,20 @@ const SMACNA_ROUND = (function () {
     const nuts = insert * 2;
     const washers = insert * 2;
 
-    const gaugeMatch = SMACNA.gaugeInfo.find((g) => g.label === gaugeLabel) || SMACNA.gaugeInfo[0];
+    let resolvedGauge = gaugeLabel;
+    let gaugeAuto = false;
+    let gaugeOutOfRange = false;
+    if (!gaugeLabel || gaugeLabel === "Auto") {
+      const { bracket, outOfRange } = gaugeBracket(diameter);
+      resolvedGauge = bracket.gauge;
+      gaugeAuto = true;
+      gaugeOutOfRange = outOfRange;
+    }
+    const gaugeMatch = SMACNA.gaugeInfo.find((g) => g.label === resolvedGauge) || SMACNA.gaugeInfo[0];
     const weight = area * gaugeMatch.weight;
 
     return {
-      circumference, areaPerPiece, area, gaugeLabel,
+      circumference, areaPerPiece, area, gaugeLabel: resolvedGauge, gaugeAuto, gaugeOutOfRange,
       insulation, sealant, adhesive, pins, tape, strap,
       hangerCount, angle, rod, insert, nuts, washers, weight
     };
@@ -429,5 +477,5 @@ const SMACNA_ROUND = (function () {
     return circumference * equivalentLength * qty;
   }
 
-  return { fittingTypes, formulaRef, defaultRoundAssumptions, computeRow, sumRows, computeFittingArea };
+  return { fittingTypes, ROUND_GAUGE_TABLE, formulaRef, defaultRoundAssumptions, gaugeBracket, computeRow, sumRows, computeFittingArea };
 })();
