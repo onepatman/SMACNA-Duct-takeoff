@@ -49,6 +49,11 @@ body{
 .tab-content{display:none; padding:18px 20px 44px; max-width:1500px; margin:0 auto;}
 .tab-content.active{display:block;}
 
+.duct-mode-toggle{display:flex; gap:2px; margin-bottom:14px; border:1px solid var(--border); border-radius:4px; overflow:hidden; width:fit-content;}
+.duct-mode-btn{padding:10px 18px; border:none; background:#EDEFF1; color:var(--graphite); font-weight:700;
+  font-size:.82rem; cursor:pointer;}
+.duct-mode-btn.active{background:var(--accent-deep); color:#fff;}
+
 /* ---------- Section headers / boxes ---------- */
 .section-header{background:var(--navy-2); color:#fff; border-left:5px solid var(--accent);
   padding:10px 14px; margin:22px 0 10px; font-weight:700; display:flex; align-items:center;

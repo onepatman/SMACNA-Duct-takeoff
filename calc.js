@@ -158,14 +158,18 @@ const SMACNA = (function () {
   /**
    * Compute one duct run. Returns null (incomplete) if W/D/L are missing or <= 0.
    * NOTE: preserved exactly from source, including rounding order.
+   * gaugeOverride (optional): index into gaugeInfo, from the per-row manual
+   * override used for Medium/High/Custom pressure class runs — Table 1-7
+   * automation is verified only for Low Pressure, so anything else must be a
+   * user-confirmed manual choice rather than a false auto-lookup.
    */
-  function computeRow(w, d, l, assumptions) {
+  function computeRow(w, d, l, assumptions, gaugeOverride) {
     if (!w || !d || !l || w <= 0 || d <= 0 || l <= 0) return null;
 
     const perimeter = 2 * (w / 1000 + d / 1000);
     const area = perimeter * l;
     const longer = Math.max(w, d);
-    const gi = gaugeIndex(longer);
+    const gi = gaugeOverride != null ? gaugeOverride : gaugeIndex(longer);
 
     const insulation = area;
     const sealant = Math.round((area / assumptions.A01) * 100) / 100;
@@ -212,4 +216,109 @@ const SMACNA = (function () {
     gaugeInfo, assumptionsMeta, formulaRef, decimalCols, gaFields, contingencyFields,
     defaultAssumptions, gaugeIndex, computeRow, sumRows, sumGauge
   };
+})();
+
+/* ============================================================
+   SMACNA Round Duct — Calculation Engine
+   Deliberately separate from the SMACNA (rectangular) module above —
+   round duct geometry/material takeoff must not share formulas with
+   rectangular, per explicit review requirement. Round duct minimum
+   gauge is NOT auto-looked-up here (see Gauge & References tab,
+   Secondary-Sourced Guidance tier) — gauge is a manual per-run
+   selection, reusing SMACNA.gaugeInfo's thickness/weight-per-sqm
+   values since those are generic steel material properties
+   independent of duct shape.
+   ============================================================ */
+const SMACNA_ROUND = (function () {
+  "use strict";
+
+  const fittingTypes = ["Elbow 90°", "Elbow 45°", "Tee", "Reducer", "Transition", "Collar", "End Cap", "Damper — Volume", "Damper — Fire", "Damper — Balancing"];
+
+  const formulaRef = [
+    { name: "CIRCUMFERENCE", formula: "Circumference (m) = π × Diameter ÷ 1000",
+      variables: "Diameter = round duct outer diameter (mm)",
+      example: "Diameter 300mm → Circumference = π × 0.300 = 0.942 m",
+      note: "Converts mm diameter to meters and finds the outer circumference.", source: "assumption" },
+    { name: "AREA", formula: "Area (sq m) = Circumference × Length × Quantity",
+      variables: "Circumference (m) from above; Length = length per piece (m); Quantity = number of identical pieces in this run",
+      example: "Circumference 0.942 m, Length 5 m, Qty 1 → Area = 0.942 × 5 × 1 = 4.71 sq m",
+      note: "Outer surface area; basis for every material quantity below.", source: "assumption" },
+    { name: "GAUGE — MANUAL SELECTION", formula: "(no formula — gauge is picked manually per run)",
+      variables: "—",
+      example: "e.g. select \"ga 22\" from the dropdown for a 300mm diameter run",
+      note: "Round duct minimum-gauge breakpoints (spiral vs. longitudinal seam, by diameter) were not verified against a primary SMACNA document in this session — automating this lookup would risk asserting an unverified structural requirement. See Gauge & References tab, Secondary-Sourced Guidance tier, for cited rule-of-thumb figures to inform your manual choice.", source: "secondary" },
+    { name: "INSULATION / SEALANT / ADHESIVE / DUCT PINS", formula: "Same rate-based formulas as rectangular: Area×1.0, Area÷A-01, Area÷A-02, CEILING(Area×A-03)",
+      variables: "A-01/A-02/A-03 — same assumptions as rectangular (Tab 1)",
+      example: "Area 4.71 sq m → Insulation 4.71 sq m, Sealant 0.13 gal, Adhesive 0.19 gal, Pins 19 pcs",
+      note: "Coverage rates are material properties independent of duct shape, so the same assumptions apply.", source: "assumption" },
+    { name: "JOINTS / TAPE", formula: "Tape (rolls) = CEILING(Circumference × Qty × CEILING(Length ÷ A-04) ÷ A-05)",
+      variables: "A-04 = joint spacing (m); A-05 = tape roll length (m)",
+      example: "CEILING(Length÷A-04) joints per piece × Qty pieces, sealed around the Circumference, consumed from A-05-length rolls",
+      note: "Direct analog of rectangular's tape formula, substituting Circumference for Perimeter.", source: "assumption" },
+    { name: "FLANGES", formula: "(no formula — manual quantity per run)",
+      variables: "—",
+      example: "User enters e.g. 2 flanges for an equipment-connection run",
+      note: "Flange locations depend on system design (equipment tie-ins), not on diameter/length alone — not computable from geometry, so it's a fillable count defaulting to 0.", source: "assumption" },
+    { name: "HANGER COUNT / ANGLE / ROD / INSERTS / NUTS / WASHERS", formula: "Same spacing-based formulas as rectangular, substituting Diameter for Width",
+      variables: "A-09/A-10/A-11/A-13/A-14 — same global assumptions as rectangular",
+      example: "Angle (m) = Hangers × (Diameter÷1000 + 0.4) — same clearance-allowance methodology as rectangular's angle formula",
+      note: "Same fixed-spec hanger assumptions as rectangular (A-13/A-14 rod/angle size are estimating assumptions, not size-varying SMACNA lookups).", source: "assumption" },
+    { name: "FITTINGS & ACCESSORIES", formula: "(no formula — manual schedule, quantities only)",
+      variables: "—",
+      example: "User enters e.g. 4× Elbow 90° at 300mm diameter",
+      note: "Fitting surface area/weight is NOT calculated — fitting geometry (gore count, taper length, etc.) isn't derivable from a straight-run diameter/length table, and there is no verified SMACNA fitting-dimension source available in this session to compute it from. This section produces ordering quantities only.", source: "assumption" }
+  ];
+
+  function defaultRoundAssumptions() {
+    return {}; // round duct reuses the shared rectangular assumptions object (A-01..A-15); no round-specific assumptions yet
+  }
+
+  /**
+   * Compute one round duct run. Returns null (incomplete) if inputs missing/invalid.
+   * gaugeLabel: manual selection, e.g. "ga 22" — matched against SMACNA.gaugeInfo.
+   */
+  function computeRow(diameter, length, qty, gaugeLabel, assumptions) {
+    if (!diameter || !length || !qty || diameter <= 0 || length <= 0 || qty <= 0) return null;
+
+    const circumference = Math.PI * (diameter / 1000);
+    const areaPerPiece = circumference * length;
+    const area = areaPerPiece * qty;
+
+    const insulation = area;
+    const sealant = Math.round((area / assumptions.A01) * 100) / 100;
+    const adhesive = Math.round((area / assumptions.A02) * 100) / 100;
+    const pins = Math.ceil(area * assumptions.A03);
+
+    const jointsPerPiece = Math.ceil(length / assumptions.A04);
+    const totalJoints = jointsPerPiece * qty;
+    const tape = Math.ceil((circumference * totalJoints) / assumptions.A05);
+    const strap = Math.ceil(((length / assumptions.A06) * (circumference + 0.3) * qty) / assumptions.A07);
+
+    const hangerCountPerPiece = Math.ceil(length / assumptions.A09 + 1);
+    const hangerCount = hangerCountPerPiece * qty;
+    const angle = hangerCount * (diameter / 1000 + 0.4);
+    const rod = hangerCount * assumptions.A11 * assumptions.A10;
+    const insert = hangerCount * assumptions.A11;
+    const nuts = insert * 2;
+    const washers = insert * 2;
+
+    const gaugeMatch = SMACNA.gaugeInfo.find((g) => g.label === gaugeLabel) || SMACNA.gaugeInfo[0];
+    const weight = area * gaugeMatch.weight;
+
+    return {
+      circumference, areaPerPiece, area, gaugeLabel,
+      insulation, sealant, adhesive, pins, tape, strap,
+      hangerCount, angle, rod, insert, nuts, washers, weight
+    };
+  }
+
+  function sumRows(results, field) {
+    let total = 0;
+    results.forEach((r) => {
+      if (r && r[field] != null) total += r[field];
+    });
+    return total;
+  }
+
+  return { fittingTypes, formulaRef, defaultRoundAssumptions, computeRow, sumRows };
 })();
