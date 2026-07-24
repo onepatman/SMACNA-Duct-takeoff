@@ -204,14 +204,14 @@
         )
         .join("");
       return `<div class="subsection-header">${table.tableRef} — ${table.label}, 2" w.g. static</div>
-        <table class="ref-table"><tr><th>Duct Dim.</th><th>Duct Ga. (min)</th><th>Reinf. Spacing (max)</th><th>Reinf. Code Grade</th></tr>${rows}</table>`;
+        <div class="table-scroll"><table class="ref-table"><tr><th>Duct Dim.</th><th>Duct Ga. (min)</th><th>Reinf. Spacing (max)</th><th>Reinf. Code Grade</th></tr>${rows}</table></div>`;
     });
     body.innerHTML = sections.join("") +
       `<div class="ref-tier-note" style="border-top:1px solid var(--border)">Reinf. Spacing/Code Grade are shown for reference only — this app does not yet compute a reinforcement-angle/bar material quantity from them. Both tables stop at 96" (2438mm); a run exceeding that is flagged in the Results table rather than silently extrapolated.</div>
       <div class="subsection-header">Gauge thickness / weight chart (existing app reference, applies to any gauge above)</div>
-      <table class="ref-table"><tr><th>Gauge</th><th>Thickness (mm)</th><th>Weight (kg/m²)</th></tr>${SMACNA.gaugeInfo
+      <div class="table-scroll"><table class="ref-table"><tr><th>Gauge</th><th>Thickness (mm)</th><th>Weight (kg/m²)</th></tr>${SMACNA.gaugeInfo
         .map((g) => `<tr><td>${g.label}</td><td>${g.thickness}</td><td>${g.weight}</td></tr>`)
-        .join("")}</table>`;
+        .join("")}</table></div>`;
   }
 
   function renderDuctSupportTable() {
@@ -221,7 +221,7 @@
     const rows = t.brackets
       .map((b) => `<tr><td>${b.maxDim}</td><td>${b.angle}</td><td>${b.rod}</td></tr>`)
       .join("");
-    body.innerHTML = `<table class="ref-table"><tr><th>Max. Duct Side/Diameter</th><th>Horizontal Support Angle</th><th>Hanger (round rod)</th></tr>${rows}</table>
+    body.innerHTML = `<div class="table-scroll"><table class="ref-table"><tr><th>Max. Duct Side/Diameter</th><th>Horizontal Support Angle</th><th>Hanger (round rod)</th></tr>${rows}</table></div>
       <div class="ref-tier-note">${t.altHangerNote} Drives A-13 (rod) / A-14 (angle) options in Tab 1 — see guidance text there for which bracket applies to your project's largest duct run.</div>`;
   }
 
@@ -232,7 +232,7 @@
     const rows = t.brackets
       .map((b) => `<tr><td>${b.maxDim}</td><td>${b.gauge}</td><td>${b.aluminumGauge}</td></tr>`)
       .join("");
-    body.innerHTML = `<table class="ref-table"><tr><th>Duct Diameter (max. width)</th><th>Steel Ga. (min, &lt;2" w.g.)</th><th>Aluminum B.&amp;S. Gage (reference)</th></tr>${rows}</table>
+    body.innerHTML = `<div class="table-scroll"><table class="ref-table"><tr><th>Duct Diameter (max. width)</th><th>Steel Ga. (min, &lt;2" w.g.)</th><th>Aluminum B.&amp;S. Gage (reference)</th></tr>${rows}</table></div>
       <div class="ref-tier-note">Aluminum B.&amp;S. Gage is shown for reference only — it is not the same equivalency system as Table 6-3 (below), which is what actually drives this app's Aluminum weight calculation. Steel Ga. drives the Round Duct calculator's "Auto" gauge lookup in Tab 2 regardless of Duct Material.</div>`;
   }
 
@@ -246,7 +246,7 @@
         return `<tr><td>${label}</td><td>${g.minEquivMm} mm</td><td>${g.commercialMm} mm</td></tr>`;
       })
       .join("");
-    body.innerHTML = `<table class="ref-table"><tr><th>Steel-Equivalent Gauge</th><th>Min. Aluminum Equivalent</th><th>Commercial Size (used for weight)</th></tr>${rows}</table>
+    body.innerHTML = `<div class="table-scroll"><table class="ref-table"><tr><th>Steel-Equivalent Gauge</th><th>Min. Aluminum Equivalent</th><th>Commercial Size (used for weight)</th></tr>${rows}</table></div>
       <div class="ref-tier-note">This app uses the Commercial Size (the stock thickness you'd actually order) for the Aluminum weight calculation — Min. Equivalent is the bare structural minimum, shown for reference. Aluminum density used: ${SMACNA.ALUMINUM_DENSITY_KG_M3} kg/m³ (general physical constant, not SMACNA-tabulated).</div>`;
   }
 
@@ -257,7 +257,7 @@
     const rows = t.rows
       .map((r) => `<tr><td style="text-align:left">${r.condition}</td><td>${r.minThickness}</td><td>${r.equivGalvGauge}</td><td>${r.approxAluminumGauge}</td></tr>`)
       .join("");
-    body.innerHTML = `<table class="ref-table"><tr><th>Condition</th><th>Min. Thickness</th><th>Equiv. Galv. Gauge</th><th>Approx. Aluminum Gauge</th></tr>${rows}</table>
+    body.innerHTML = `<div class="table-scroll"><table class="ref-table"><tr><th>Condition</th><th>Min. Thickness</th><th>Equiv. Galv. Gauge</th><th>Approx. Aluminum Gauge</th></tr>${rows}</table></div>
       <div class="ref-tier-note">Applies specifically to single-dwelling residential heating/cooling systems — a distinct, lighter-duty use case from this app's general Table 6-1/6-2/6-8 commercial brackets, and introduces an "exposed vs. enclosed duct" distinction this app has no input for. Reference only — not wired into automatic gauge assignment or any computed quantity.</div>`;
   }
 
@@ -268,7 +268,7 @@
     const rows = t.rows
       .map((r) => `<tr><td style="text-align:left">${r.material}</td><td>${r.fpm}</td><td>${r.ms}</td></tr>`)
       .join("");
-    body.innerHTML = `<table class="ref-table"><tr><th>Material Conveyed</th><th>Feet per Minute</th><th>m/s</th></tr>${rows}</table>
+    body.innerHTML = `<div class="table-scroll"><table class="ref-table"><tr><th>Material Conveyed</th><th>Feet per Minute</th><th>m/s</th></tr>${rows}</table></div>
       <div class="ref-tier-note">${t.note} Airflow/exhaust duct sizing reference — unrelated to this app's material takeoff calculations (there is no airflow/CFM input here). Reference only.</div>`;
   }
 
