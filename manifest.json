@@ -1,7 +1,7 @@
 {
-  "name": "SMACNA Duct Takeoff Calculator",
-  "short_name": "SMACNA Takeoff",
-  "description": "SMACNA rectangular duct material takeoff calculator — offline-capable engineering tool for HVAC/MEPF estimating.",
+  "name": "🔥Blueprintminds🔥 — SMACNA Duct Material Take-off",
+  "short_name": "Blueprintminds SMACNA",
+  "description": "SMACNA rectangular and round duct material takeoff calculator — offline-capable engineering tool for HVAC/MEPF estimating. Coded by Engr.OnePatMan.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

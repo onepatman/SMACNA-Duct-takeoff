@@ -3,19 +3,38 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>SMACNA Duct Takeoff — Engineering Calculator</title>
-<meta name="description" content="SMACNA rectangular duct material takeoff calculator — installable offline engineering tool.">
+<title>🔥Blueprintminds🔥 — SMACNA Duct Material Take-off</title>
+<meta name="description" content="SMACNA rectangular and round duct material takeoff calculator — installable offline engineering tool. Coded by Engr.OnePatMan.">
 <meta name="theme-color" content="#0D1B2A">
 <link rel="manifest" href="./manifest.json">
 <link rel="icon" href="./favicon.png">
-<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <link rel="stylesheet" href="./style.css">
 </head>
 <body>
 
+<!-- Initial-load branding. Removed by app.js the moment the app has finished
+     its first render (not a timed delay) — on this static local app that's
+     near-instant, so it reads as a branding flash, not a loading gate. -->
+<div id="app-splash">
+  <img src="./icon-512.png" alt="Blueprintminds SMACNA Duct Material Take-off logo" class="splash-logo">
+  <div class="splash-brand">🔥Blueprintminds🔥</div>
+  <div class="splash-title">SMACNA Duct Material Take-off</div>
+  <div class="splash-credit">© 2026 — Coded by Engr.OnePatMan🤓</div>
+</div>
+
 <div class="top-bar">
-  <button id="install-btn" class="install-btn" disabled>⬇ Install App</button>
-  <h1 id="app-title">RECTANGULAR &amp; ROUND DUCT MATERIAL TAKEOFF <span class="offline-pill">OFFLINE</span></h1>
+  <div class="header-grid">
+    <div class="header-logo-col">
+      <img src="./logo-header.png" alt="Blueprintminds SMACNA Duct Material Take-off logo" class="header-logo" width="48" height="48">
+    </div>
+    <div class="header-title-col">
+      <h1 id="app-title">RECTANGULAR &amp; ROUND DUCT MATERIAL TAKEOFF <span class="offline-pill">OFFLINE</span></h1>
+    </div>
+    <div class="header-action-col">
+      <button id="install-btn" class="install-btn" disabled>⬇ Install App</button>
+    </div>
+  </div>
   <div class="sub">SMACNA HVAC Duct Construction Standards — 3rd Ed. | Galvanized Sheet Metal Ductwork | Select duct type in Tab 2</div>
   <span class="badge-pill">Philippine PSME Code Compliant</span>
   <span class="badge-pill">Reference Basis: SMACNA HVAC Duct Construction Standards, 3rd Ed.</span>
@@ -312,6 +331,11 @@
   REFERENCES: SMACNA HVAC Duct Construction Standards, 3rd Edition (2005) &nbsp;|&nbsp; PSME Code (2012 Ed.) Part 1 &amp; 2 &nbsp;|&nbsp;
   ASHRAE Fundamentals 2021 (Ch. 21 — Duct Design) &nbsp;|&nbsp;
   Verify all quantities with final construction drawings before procurement.
+</div>
+
+<div class="brand-footer">
+  <div class="brand-footer-name">🔥Blueprintminds🔥</div>
+  <div class="brand-footer-line">SMACNA Duct Material Take-off &nbsp;©&nbsp;2026 — Coded by Engr.OnePatMan🤓</div>
 </div>
 
 <script src="./calc.js"></script>

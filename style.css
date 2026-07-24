@@ -29,14 +29,40 @@ body{
 /* ---------- Top bar ---------- */
 .top-bar{background:var(--navy); color:#EAF1F5; padding:16px 22px;
   border-bottom:3px solid var(--accent);}
-.top-bar h1{margin:0; font-size:1.2rem; font-weight:700; letter-spacing:.2px;}
-.top-bar .sub{font-size:.78rem; color:#9FB3C4; margin-top:5px; line-height:1.4;}
+/* 3-column grid (logo | title | action) so the title stays visually centered
+   on the bar regardless of the logo's/button's own width — text-align:center
+   alone would drift off-center once the logo is added on the left. */
+.header-grid{display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:14px;}
+.header-logo-col{justify-self:start;}
+.header-logo{width:48px; height:48px; border-radius:8px; display:block; object-fit:cover;
+  box-shadow:0 0 0 1px rgba(255,255,255,.15);}
+.header-title-col{justify-self:center; text-align:center;}
+.header-action-col{justify-self:end;}
+.top-bar h1{margin:0; font-size:1.38rem; font-weight:700; letter-spacing:.2px;}
+.top-bar .sub{font-size:.78rem; color:#9FB3C4; margin-top:8px; line-height:1.4; text-align:center;}
 .top-bar .badge-pill{display:inline-block; background:var(--navy-2); border:1px solid var(--accent);
   color:#CFE8F7; font-size:.68rem; padding:3px 10px; border-radius:2px; margin-top:8px; margin-right:6px;
   text-transform:uppercase; letter-spacing:.4px;}
-.top-bar .install-btn{float:right; background:var(--accent-deep); color:#fff; border:none; padding:8px 14px;
-  border-radius:3px; font-size:.78rem; font-weight:600; cursor:pointer;}
+.top-bar{text-align:center;}
+.top-bar .install-btn{background:var(--accent-deep); color:#fff; border:none; padding:8px 14px;
+  border-radius:3px; font-size:.78rem; font-weight:600; cursor:pointer; white-space:nowrap;}
 .top-bar .install-btn:disabled{display:none;}
+
+/* ---------- Opening / splash branding ---------- */
+#app-splash{position:fixed; inset:0; z-index:9999; background:var(--navy);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
+  text-align:center; padding:20px; transition:opacity .25s ease;}
+#app-splash.splash-hidden{opacity:0; pointer-events:none;}
+.splash-logo{width:104px; height:104px; border-radius:14px; box-shadow:0 0 0 1px rgba(255,255,255,.15);}
+.splash-brand{color:#fff; font-size:1.3rem; font-weight:800; letter-spacing:.3px;}
+.splash-title{color:#CFE8F7; font-size:.92rem; font-weight:600;}
+.splash-credit{color:#8FA3AF; font-size:.74rem; margin-top:4px;}
+
+/* ---------- Brand footer ---------- */
+.brand-footer{background:var(--navy); color:#EAF1F5; text-align:center; padding:16px 18px;
+  border-top:1px solid var(--navy-2);}
+.brand-footer-name{font-size:1.05rem; font-weight:800; letter-spacing:.3px;}
+.brand-footer-line{font-size:.76rem; color:#9FB3C4; margin-top:4px;}
 
 /* ---------- Tabs ---------- */
 .tabs{position:sticky; top:0; z-index:200; background:var(--charcoal); display:flex; gap:2px;
@@ -158,8 +184,15 @@ body.offline .offline-pill{display:inline-block;}
 /* ---------- Responsive / mobile ---------- */
 @media (max-width:720px){
   .proj-grid{grid-template-columns:1fr;}
-  .top-bar h1{font-size:1.02rem;}
-  .top-bar .install-btn{float:none; display:block; margin-top:10px;}
+  /* Logo-beside-title is desktop/laptop only — hide it and collapse the grid
+     to a single centered column so the title can wrap without overflow. */
+  .header-grid{grid-template-columns:1fr; row-gap:10px;}
+  .header-logo-col{display:none;}
+  .header-title-col,.header-action-col{justify-self:stretch;}
+  .top-bar h1{font-size:1.05rem; overflow-wrap:break-word;}
+  .top-bar .install-btn{display:block; width:100%; margin-top:0;}
+  .splash-logo{width:84px; height:84px;}
+  .splash-brand{font-size:1.1rem;}
   .tab-btn{padding:10px 12px; font-size:.76rem;}
   .btn{flex:1 1 auto;}
 }
