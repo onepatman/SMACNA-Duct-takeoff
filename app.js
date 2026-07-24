@@ -9,6 +9,7 @@
   // the print report — one definition of what each source tier means and how
   // it's badged, so the three surfaces never drift out of sync.
   const TIER_LABELS = {
+    primary: { badge: "✅ Verified Primary SMACNA Reference", note: "Provided directly by the user from scanned pages of SMACNA HVAC Duct Construction Standards — Metal and Flexible, 2nd Edition (transcribed 2026-07-24). Genuine primary-source data, not an estimate or secondary aggregation — but transcription from a photograph can still miss a digit, so spot-check any figure that materially affects fabrication/procurement against your own copy." },
     existing: { badge: "🗂️ Existing App/Workbook Reference", note: "Inherited from the app's original source workbook — not independently re-verified against a primary SMACNA document in this session." },
     secondary: { badge: "🔎 Secondary-Sourced Guidance", note: "Aggregated from published secondary sources, not the primary SMACNA manual — confirm exact values against your SMACNA 3rd Ed. before use." },
     assumption: { badge: "📐 Engineering/Estimating Assumption", note: "Project-adjustable estimating judgment, not code-mandated." },
@@ -40,6 +41,15 @@
   window.onPressureClassChange = function () {
     const cls = document.getElementById("p-pressure-class").value;
     document.getElementById("pressure-class-warning").style.display = cls === "Low" ? "none" : "block";
+  };
+
+  // ---------------- Standard duct section length (SMACNA Table 6-1 vs 6-2) ----------------
+  function sectionLength() {
+    const el = document.getElementById("p-section-length");
+    return el ? el.value : "4ft";
+  }
+  window.onSectionLengthChange = function () {
+    recalcAllRows(); // gauge assignment depends on which table (6-1/6-2) is selected
   };
 
   // ---------------- Assumptions tab ----------------
@@ -167,19 +177,53 @@
   }
 
   // ---------------- Gauge reference tab ----------------
+  // Renders both SMACNA Table 6-1 (4 ft) and 6-2 (5 ft) bracket tables in
+  // full, regardless of which one Tab 1's Standard Duct Section Length
+  // selector currently uses for live calculation — this is the reference
+  // view, so both should be visible for comparison/audit.
   function renderGaugeTable() {
     const body = document.getElementById("gauge-ref-body");
-    body.innerHTML = SMACNA.gaugeInfo
-      .map((g, i) => {
-        const range = i === 0 ? "≤ 300 mm" : i === SMACNA.gaugeInfo.length - 1 ? "> 3050 mm" : `${g.min} – ${g.max} mm`;
-        return `<tr><td>${i + 1}</td><td>${range}</td><td>${g.label}</td><td>No. ${g.label.split(" ")[1]}</td><td>${g.thickness}</td><td>${g.weight}</td><td>${g.ref}</td></tr>`;
-      })
-      .join("");
+    if (!body) return;
+    const sections = ["4ft", "5ft"].map((key) => {
+      const table = SMACNA.RECT_GAUGE_TABLES[key];
+      const rows = table.brackets
+        .map(
+          (b) =>
+            `<tr><td>${b.ductDim}</td><td>${b.gauge}</td><td>${b.reinfSpacing}</td><td>${b.reinfCode}</td></tr>`
+        )
+        .join("");
+      return `<div class="subsection-header">${table.tableRef} — ${table.label}, 2" w.g. static</div>
+        <table class="ref-table"><tr><th>Duct Dim.</th><th>Duct Ga. (min)</th><th>Reinf. Spacing (max)</th><th>Reinf. Code Grade</th></tr>${rows}</table>`;
+    });
+    body.innerHTML = sections.join("") +
+      `<div class="ref-tier-note" style="border-top:1px solid var(--border)">Reinf. Spacing/Code Grade are shown for reference only — this app does not yet compute a reinforcement-angle/bar material quantity from them. Both tables stop at 96" (2438mm); a run exceeding that is flagged in the Results table rather than silently extrapolated.</div>
+      <div class="subsection-header">Gauge thickness / weight chart (existing app reference, applies to any gauge above)</div>
+      <table class="ref-table"><tr><th>Gauge</th><th>Thickness (mm)</th><th>Weight (kg/m²)</th></tr>${SMACNA.gaugeInfo
+        .map((g) => `<tr><td>${g.label}</td><td>${g.thickness}</td><td>${g.weight}</td></tr>`)
+        .join("")}</table>`;
   }
 
-  // ---------------- Gauge & References tab: four-tier breakdown ----------------
+  function renderDuctSupportTable() {
+    const body = document.getElementById("duct-support-ref-body");
+    if (!body) return;
+    const t = SMACNA.DUCT_SUPPORT_TABLE;
+    const rows = t.brackets
+      .map((b) => `<tr><td>${b.maxDim}</td><td>${b.angle}</td><td>${b.rod}</td></tr>`)
+      .join("");
+    body.innerHTML = `<table class="ref-table"><tr><th>Max. Duct Side/Diameter</th><th>Horizontal Support Angle</th><th>Hanger (round rod)</th></tr>${rows}</table>
+      <div class="ref-tier-note">${t.altHangerNote} Drives A-13 (rod) / A-14 (angle) options in Tab 1 — see guidance text there for which bracket applies to your project's largest duct run.</div>`;
+  }
+
+  // ---------------- Gauge & References tab: five-tier breakdown ----------------
   function renderReferenceTiers() {
     const rowsFor = (tier) => SMACNA.assumptionsMeta.filter((a) => a.tier === tier);
+
+    const primaryBody = document.getElementById("ref-primary-body");
+    if (primaryBody) {
+      primaryBody.innerHTML = rowsFor("primary")
+        .map((a) => `<tr><td>${a.ref}</td><td>${fmtAssumpValue(a)}</td><td style="text-align:left">${a.label}</td><td style="text-align:left;font-size:.7rem">${a.guidance || ""}</td></tr>`)
+        .join("");
+    }
 
     const existingBody = document.getElementById("ref-existing-body");
     if (existingBody) {
@@ -236,7 +280,7 @@
       <td class="computed" id="runref-${id}">${run}</td>
       <td class="computed" id="perim-${id}">—</td>
       <td class="computed" id="area-${id}">—</td>
-      <td><select id="gaugeover-${id}" title="Manual gauge override — for Medium/High/Custom pressure class runs, since Table 1-7 automation is verified only for Low Pressure">${gaugeOverrideOptions
+      <td><select id="gaugeover-${id}" title="Manual gauge override — for Medium/High/Custom pressure class runs, since Table 6-1/6-2 automation is verified only for Low Pressure">${gaugeOverrideOptions
         .map((o) => `<option value="${o}">${o}</option>`)
         .join("")}</select></td>
       <td class="computed" id="ga26-${id}">—</td><td class="computed" id="ga24-${id}">—</td>
@@ -300,7 +344,7 @@
     const overrideEl = document.getElementById("gaugeover-" + id);
     const overrideVal = overrideEl ? overrideEl.value : "Auto";
     const gaugeOverride = overrideVal === "Auto" ? null : SMACNA.gaugeInfo.findIndex((g) => g.label === overrideVal);
-    const result = SMACNA.computeRow(w, d, l, assumptions, gaugeOverride != null && gaugeOverride >= 0 ? gaugeOverride : null);
+    const result = SMACNA.computeRow(w, d, l, assumptions, gaugeOverride != null && gaugeOverride >= 0 ? gaugeOverride : null, sectionLength());
     rowResults.set(id, result);
 
     const fields = ["perim", "area", "ins", "seal", "adh", "pin", "tape", "strap", "corner", "angle", "rod", "insert", "nuts", "wash", "weight"];
@@ -324,13 +368,18 @@
     SMACNA.gaFields.forEach((f, i) => {
       const cell = document.getElementById(f + "-" + id);
       if (i === result.gaugeIndex) {
-        cell.textContent = result.area.toFixed(2);
+        cell.textContent = (result.gaugeOutOfRange ? "⚠ " : "") + result.area.toFixed(2);
+        cell.title = result.gaugeOutOfRange
+          ? `Exceeds ${result.gaugeTableRef}'s documented 96" (2438mm) range — this gauge is extrapolated from the largest bracket, not a verified table value. Use the manual gauge override.`
+          : "";
         cell.classList.add("gauge-hit");
       } else {
         cell.textContent = "—";
+        cell.title = "";
         cell.classList.remove("gauge-hit");
       }
     });
+    if (resEl) resEl.classList.toggle("gauge-outrange", !!result.gaugeOutOfRange);
     document.getElementById("ins-" + id).textContent = result.insulation.toFixed(2);
     document.getElementById("seal-" + id).textContent = result.sealant.toFixed(2);
     document.getElementById("adh-" + id).textContent = result.adhesive.toFixed(2);
@@ -409,6 +458,10 @@
     const nIncomplete = document.querySelectorAll("#input-body tr.data-row.incomplete").length;
     document.getElementById("incomplete-warning").style.display = nIncomplete > 0 ? "block" : "none";
 
+    const nOutOfRange = document.querySelectorAll("#results-body tr.data-row.gauge-outrange").length;
+    const outOfRangeWarning = document.getElementById("gauge-outrange-warning");
+    if (outOfRangeWarning) outOfRangeWarning.style.display = nOutOfRange > 0 ? "block" : "none";
+
     renderSummary(totals, wasteFactor);
   }
 
@@ -460,7 +513,7 @@
       <div class="summary-grid">${miscFields.map(lineBox).join("")}</div>
 
       <div class="subsection-header">Hangers &amp; Supports</div>
-      <div class="warning-box">⚠ Rod diameter (A-13: ${assumptions.A13}) and trapeze angle size (A-14: ${assumptions.A14}) are manually selected estimating assumptions — <b>NOT</b> automatically SMACNA-compliant sizing. Final support sizing must be verified by the project engineer against the applicable SMACNA edition before fabrication or installation.</div>
+      <div class="warning-box">⚠ Rod diameter (A-13: ${assumptions.A13}) and trapeze angle size (A-14: ${assumptions.A14}) are sourced from SMACNA Table 6-7, Section C — but as <b>one project-wide manual pick</b>, not auto-varied per run. Confirm the selected bracket matches the <b>largest</b> duct run in this project (see Tab 1 guidance / Tab 3 reference), and have the project engineer verify final support sizing before fabrication or installation.</div>
       <div class="summary-grid">${hangerFields.map(lineBox).join("")}</div>
 
       <div class="ok-box" id="rows-ok">${nRows} duct run(s) computed successfully. Final Takeoff totals (Net + Waste/Contingency Allowance, A-15) update live as you edit any cell above.</div>
@@ -672,7 +725,7 @@
       <div class="summary-grid">${miscFields.map(lineBox).join("")}</div>
 
       <div class="subsection-header">Hangers &amp; Supports</div>
-      <div class="warning-box">⚠ Rod diameter (A-13: ${assumptions.A13}) and trapeze angle size (A-14: ${assumptions.A14}) are manually selected estimating assumptions — <b>NOT</b> automatically SMACNA-compliant sizing. Final support sizing must be verified by the project engineer against the applicable SMACNA edition before fabrication or installation.</div>
+      <div class="warning-box">⚠ Rod diameter (A-13: ${assumptions.A13}) and trapeze angle size (A-14: ${assumptions.A14}) are sourced from SMACNA Table 6-7, Section C — but as <b>one project-wide manual pick</b>, not auto-varied per run. Confirm the selected bracket matches the <b>largest</b> duct run in this project (see Tab 1 guidance / Tab 3 reference), and have the project engineer verify final support sizing before fabrication or installation.</div>
       <div class="summary-grid">${hangerFields.map(lineBox).join("")}</div>
 
       <div class="subsection-header">Fittings &amp; Accessories</div>
@@ -719,7 +772,7 @@
   }
 
   function assumptionsByTierHtml() {
-    const tiers = ["existing", "secondary", "assumption", "general"];
+    const tiers = ["primary", "existing", "secondary", "assumption", "general"];
     return tiers
       .map((t) => {
         const rows = SMACNA.assumptionsMeta.filter((a) => a.tier === t);
@@ -807,7 +860,7 @@
       </div>
       <div class="report-section">
         <div class="report-section-title">4. Hangers &amp; Supports</div>
-        <div class="report-disclaimer">⚠ Rod diameter (A-13: ${assumptions.A13}) and trapeze angle size (A-14: ${assumptions.A14}) are manually selected estimating assumptions — NOT automatically SMACNA-compliant sizing. Final support sizing must be verified by the project engineer against the applicable SMACNA edition before fabrication or installation.</div>
+        <div class="report-disclaimer">⚠ Rod diameter (A-13: ${assumptions.A13}) and trapeze angle size (A-14: ${assumptions.A14}) are sourced from SMACNA Table 6-7, Section C — but as one project-wide manual pick, not auto-varied per run. Confirm the selected bracket matches the largest duct run in this project, and have the project engineer verify final support sizing before fabrication or installation.</div>
         <table class="report-table"><thead><tr><th>Item</th><th>Final (incl. allowance)</th><th>Audit detail</th></tr></thead>
         <tbody>${hangerFields.map(lineHtml).join("")}</tbody></table>
       </div>`;
@@ -888,7 +941,7 @@
       </div>
       <div class="report-section">
         <div class="report-section-title">4. Hangers &amp; Supports</div>
-        <div class="report-disclaimer">⚠ Rod diameter (A-13: ${assumptions.A13}) and trapeze angle size (A-14: ${assumptions.A14}) are manually selected estimating assumptions — NOT automatically SMACNA-compliant sizing. Final support sizing must be verified by the project engineer against the applicable SMACNA edition before fabrication or installation.</div>
+        <div class="report-disclaimer">⚠ Rod diameter (A-13: ${assumptions.A13}) and trapeze angle size (A-14: ${assumptions.A14}) are sourced from SMACNA Table 6-7, Section C — but as one project-wide manual pick, not auto-varied per run. Confirm the selected bracket matches the largest duct run in this project, and have the project engineer verify final support sizing before fabrication or installation.</div>
         <table class="report-table"><thead><tr><th>Item</th><th>Final (incl. allowance)</th><th>Audit detail</th></tr></thead>
         <tbody>${hangerFields.map(lineHtml).join("")}</tbody></table>
       </div>
@@ -971,6 +1024,7 @@
     renderFormulaRef();
     renderFormulaRefRound();
     renderGaugeTable();
+    renderDuctSupportTable();
     renderReferenceTiers();
     window.addRow("SA-01", "SA", 400, 300, 10);
     window.addRow("SA-02", "SA", 600, 400, 8);
