@@ -1,4 +1,4 @@
-const CACHE_NAME = "smacna-takeoff-v15";
+const CACHE_NAME = "smacna-takeoff-v18";
 const PRECACHE_URLS = [
   "./index.html",
   "./manifest.json",

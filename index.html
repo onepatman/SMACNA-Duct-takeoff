@@ -95,8 +95,16 @@
       </select>
       <div style="font-size:.68rem;color:#607D8B;font-style:italic;margin-top:3px">Selects which SMACNA gauge/reinforcement table (6-1 or 6-2, both 2" w.g. static) drives the automatic gauge assignment in Tab 2 — see Tab 3, Verified Primary tier, for the full bracket breakdown.</div>
     </div>
+    <div class="proj-field">
+      <label>DUCT MATERIAL</label>
+      <select id="p-duct-material" onchange="onDuctMaterialChange()">
+        <option value="steel" selected>Galvanized Steel</option>
+        <option value="aluminum">Aluminum (Alloy 3003-H14)</option>
+      </select>
+      <div style="font-size:.68rem;color:#607D8B;font-style:italic;margin-top:3px">Aluminum converts sheet weight/thickness via SMACNA Table 6-3's commercial-size row for the steel-equivalent gauge Tab 2 already assigns. Gauge assignment itself and all hanger/reinforcement hardware (A-13/A-14, Table 6-7) stay steel-spec either way — Table 6-4/6-5 aluminum dimension/reinforcement equivalents are not yet implemented.</div>
+    </div>
   </div>
-  <div class="warning-box" id="pressure-class-warning" style="display:none">⚠ Gauge automation in this app is wired to SMACNA Table 6-1/6-2 for Low Pressure (2" w.g.) only. Medium/High Pressure are classification labels only — no gauge or reinforcement table backs them in this app at all. Use the manual gauge override in the Results table (Tab 2) for any run outside Low Pressure.</div>
+  <div class="warning-box" id="pressure-class-warning" style="display:none">⚠ Gauge automation in this app is wired to SMACNA Table 6-1/6-2 (rectangular) and Table 6-8 (round) for Low Pressure (&lt;2" w.g.) only. Medium/High Pressure are classification labels only — no gauge or reinforcement table backs them in this app at all. Use the manual gauge override in the Results table (Tab 2) for any run outside Low Pressure.</div>
 
   <div class="section-header"><span class="badge">2</span> MATERIAL COVERAGE ASSUMPTIONS</div>
   <div class="legend-box">
@@ -206,7 +214,7 @@
 
   <div id="round-calc-section" style="display:none">
     <div class="section-header"><span class="badge">1</span> ① AUTOMATIC — STRAIGHT ROUND DUCT TAKEOFF</div>
-    <div class="legend-box">Enter <b>Diameter</b> (mm), <b>Length</b> per piece (m), and <b>Quantity</b> for each round duct run. Gauge is <b>manually selected</b> per run — round duct minimum-gauge breakpoints were not verified against a primary SMACNA document in this session (see Tab 3, Secondary-Sourced Guidance, for cited rule-of-thumb figures). Formulas are geometry-correct for round duct and do not share code with the rectangular calculator.</div>
+    <div class="legend-box">Enter <b>Diameter</b> (mm), <b>Length</b> per piece (m), and <b>Quantity</b> for each round duct run. Gauge defaults to <b>Auto</b> — an automatic lookup against SMACNA Table 6-8 (Round, Low Pressure &lt;2" w.g.) by diameter — with a manual override dropdown for anything the table doesn't cover (see Tab 3, Verified Primary tier, for the full bracket breakdown). Formulas are geometry-correct for round duct and do not share code with the rectangular calculator.</div>
 
     <div class="action-bar no-print">
       <button class="btn btn-add" onclick="addRoundRow()">+ Add Round Duct Run</button>
@@ -217,13 +225,13 @@
     <div class="formula-box">
       <b>Core formulas used per run:</b><br>
       Circumference (m) = π × Diameter÷1000 &nbsp;|&nbsp; Area (sq m) = Circumference × Length × Quantity<br>
-      Gauge = manual selection (not auto-looked-up) &nbsp;|&nbsp; Hangers = ROUNDUP(Length ÷ A-09 + 1, 0) × Quantity
+      Gauge = SMACNA Table 6-8 bracket of Diameter (Auto), or manual override &nbsp;|&nbsp; Hangers = ROUNDUP(Length ÷ A-09 + 1, 0) × Quantity
     </div>
 
     <div class="subsection-header">1a &middot; Input Parameters — Round Duct Runs (fill)</div>
     <div class="table-scroll">
     <table class="takeoff input-table">
-      <thead><tr><th>Run</th><th>Diameter<br>mm</th><th>Length<br>m (per pc)</th><th>Qty</th><th>Gauge<br>(manual)</th><th>Flanges<br>(manual qty)</th><th class="no-print"></th></tr></thead>
+      <thead><tr><th>Run</th><th>Diameter<br>mm</th><th>Length<br>m (per pc)</th><th>Qty</th><th>Gauge<br>(Auto/override)</th><th>Flanges<br>(manual qty)</th><th class="no-print"></th></tr></thead>
       <tbody id="round-input-body"></tbody>
     </table>
     </div>
@@ -233,13 +241,13 @@
     <table class="takeoff results-table">
       <thead>
         <tr>
-          <th class="grp-dim" colspan="3">RUN / COMPUTED DIMENSIONS</th>
+          <th class="grp-dim" colspan="4">RUN / COMPUTED DIMENSIONS</th>
           <th class="grp-ins" colspan="4">INSULATION &amp; ACCESSORIES</th>
           <th class="grp-hng" colspan="5">HANGER SUPPORT HARDWARE</th>
           <th class="grp-wt" colspan="1">EST. WEIGHT</th>
         </tr>
         <tr>
-          <th>Run</th><th>Circumference<br>m</th><th>Area<br>sq m</th>
+          <th>Run</th><th>Circumference<br>m</th><th>Area<br>sq m</th><th>Gauge<br>(SMACNA T6-8)</th>
           <th>Insul.<br>sq m</th><th>Sealant<br>gal</th><th>Adhesive<br>gal</th><th>Duct Pin<br>pcs</th>
           <th>Angle<br>m</th><th>Rod<br>m</th><th>Cnc Insert<br>pcs</th><th>Nuts<br>pcs</th><th>Washers<br>pcs</th>
           <th>kg</th>
@@ -248,19 +256,19 @@
       <tbody id="round-results-body"></tbody>
       <tfoot>
         <tr class="totals-row">
-          <td colspan="3" style="text-align:right">NET TOTALS →</td>
+          <td colspan="4" style="text-align:right">NET TOTALS →</td>
           <td id="rt-ins">0</td><td id="rt-seal">0</td><td id="rt-adh">0</td><td id="rt-pin">0</td>
           <td id="rt-angle">0</td><td id="rt-rod">0</td><td id="rt-insert">0</td><td id="rt-nuts">0</td><td id="rt-wash">0</td>
           <td id="rt-weight">0</td>
         </tr>
         <tr class="waste-row">
-          <td colspan="3" style="text-align:right" id="round-waste-row-label">+ Waste/Contingency (A-15) →</td>
+          <td colspan="4" style="text-align:right" id="round-waste-row-label">+ Waste/Contingency (A-15) →</td>
           <td id="rw-ins">0</td><td id="rw-seal">0</td><td id="rw-adh">0</td><td id="rw-pin">0</td>
           <td id="rw-angle">0</td><td id="rw-rod">0</td><td id="rw-insert">0</td><td id="rw-nuts">0</td><td id="rw-wash">0</td>
           <td id="rw-weight">0</td>
         </tr>
         <tr class="final-row">
-          <td colspan="3" style="text-align:right">FINAL TAKEOFF TOTALS →</td>
+          <td colspan="4" style="text-align:right">FINAL TAKEOFF TOTALS →</td>
           <td id="rf-ins">0</td><td id="rf-seal">0</td><td id="rf-adh">0</td><td id="rf-pin">0</td>
           <td id="rf-angle">0</td><td id="rf-rod">0</td><td id="rf-insert">0</td><td id="rf-nuts">0</td><td id="rf-wash">0</td>
           <td id="rf-weight">0</td>
@@ -269,6 +277,7 @@
     </table>
     </div>
     <div class="warning-box" id="round-incomplete-warning" style="display:none">⚠ Rows highlighted in red are missing Diameter, Length, or Quantity and are excluded from totals until completed.</div>
+    <div class="warning-box" id="round-gauge-outrange-warning" style="display:none">⚠ One or more rows (marked ⚠ in the Gauge column) have a diameter exceeding SMACNA Table 6-8's documented 84" (2134mm) range. The gauge shown is extrapolated from the largest bracket, not a verified table value — use the manual gauge override for these runs.</div>
 
     <div class="section-header"><span class="badge">2</span> ② FITTINGS &amp; ACCESSORIES SCHEDULE (manual entry, estimated area)</div>
     <div class="report-disclaimer" style="margin:10px 0">⚠ Fitting quantities and sizes are entered manually. Their <b>surface-area contribution</b> to Insulation/Sealant/Adhesive/Duct Pins (Summary below) is an <b>estimate</b> using a simple equivalent-length approximation (assumption A-16, Tab 1) — <b>NOT</b> a verified SMACNA fitting-dimension calculation, since real fitting geometry (gore count, taper length, etc.) varies by manufacturer and isn't derivable from a straight-run diameter/length table alone. Weight and gauge per fitting are still not tracked. Verify against actual fabrication drawings before procurement.</div>
@@ -297,6 +306,18 @@
   <div id="gauge-ref-body"></div>
   <div class="subsection-header">Duct Support — SMACNA Table 6-7, Section C (Horizontal Trapeze-Type)</div>
   <div id="duct-support-ref-body"></div>
+  <div class="subsection-header">Gauge Selection — SMACNA Table 6-8 (Round, Pressure &lt;2" w.g. static)</div>
+  <div class="legend-box">Gauge is selected by <b>Diameter</b>. Only the Round, &lt;2" w.g. (Low Pressure) column was transcribed — Table 6-8 also gives separate Flat-Oval and &gt;2"–&lt;10" w.g. Spiral/Longitudinal-Seam/Welded-Fittings values this app doesn't model (no seam-type or flat-oval input yet). Table stops at 84" (2134mm) — see Tab 2's out-of-range warning for anything larger.</div>
+  <div id="round-gauge-ref-body"></div>
+  <div class="subsection-header">Material Thickness Equivalency — SMACNA Table 6-3 (Rectangular Aluminum Duct, Alloy 3003-H14)</div>
+  <div class="legend-box">Converts the steel-equivalent gauge Tab 2 already assigns into an aluminum thickness — used when Tab 1's Duct Material is set to Aluminum. Table 6-3's own weight row says "Consult Appendix-5 for Weights," which wasn't part of the supplied source pages, so weight here is computed from thickness × a general aluminum density constant (2700 kg/m³) instead of a SMACNA-tabulated figure. <b>Not yet implemented:</b> Table 6-4 (Dimension Adjustments — keyed by a different "Rigidity Class" A–L lettering not confirmed to align with Table 6-1/6-2's Reinf. Code Grade C–I) and Table 6-5 (Reinforcement angle/bar aluminum equivalents — this app hasn't transcribed the underlying steel angle/bar sizes for the reinforcement codes either).</div>
+  <div id="aluminum-ref-body"></div>
+  <div class="subsection-header">Duct Thickness — SMACNA Table 6-9 (Single-Dwelling Unit, Heating or Cooling)</div>
+  <div class="legend-box">Residential-only reference — a distinct, lighter-duty use case from the general commercial brackets above. Not wired into any calculation in this app; see the note below the table.</div>
+  <div id="residential-duct-ref-body"></div>
+  <div class="subsection-header">Minimum Conveying Velocities — SMACNA Table 5-1</div>
+  <div class="legend-box">Airflow/exhaust duct sizing reference (dust/fume conveying velocity) — a different engineering discipline from material takeoff. This app has no airflow/CFM input, so this table is reference only and does not feed any calculation here.</div>
+  <div id="conveying-velocity-ref-body"></div>
   <div class="subsection-header">Assumption values in this tier</div>
   <table class="ref-table"><tr><th>Ref.</th><th>Value</th><th>Description</th><th>Guidance</th></tr><tbody id="ref-primary-body"></tbody></table>
 
@@ -315,10 +336,6 @@
   <div class="ref-tier-header tier-secondary">🔎 Secondary-Sourced Guidance</div>
   <div class="ref-tier-note">Aggregated from published secondary sources (contractor/reference sites, cross-checked across 2+ independently-authored pages), not the primary SMACNA manual — confirm exact values against your SMACNA 3rd Ed. before use.</div>
   <table class="ref-table"><tr><th>Ref.</th><th>Value</th><th>Description</th><th>Guidance</th></tr><tbody id="ref-secondary-body"></tbody></table>
-  <div class="subsection-header">Round Duct — Minimum Gauge (not auto-computed — see Tab 2 Round Duct manual gauge selection)</div>
-  <div class="legend-box">
-    Cross-checked across 2+ secondary sources (not the primary SMACNA manual): 28ga minimum is commonly cited for 4–14" diameter on both spiral and longitudinal seam construction; spiral (lockseam) duct can commonly use 26ga up to ~24" diameter (spiral seams add stiffness — max D/t ratio ~1800 vs ~800 for longitudinal); longitudinal-seam duct is commonly capped at 26ga up to ~18" diameter. <b>These figures are directional, not a complete verified table</b> — the app does not auto-select round duct gauge; pick manually per run in Tab 2 and confirm against your SMACNA 3rd Ed. manual (or manufacturer's duct schedule) before fabrication.
-  </div>
 
   <div class="ref-tier-header tier-assumption">📐 Engineering/Estimating Assumption</div>
   <div class="ref-tier-note">Project-adjustable estimating judgment, not code-mandated. Change these in Tab 1 to match your project specs, product TDS, or house rules.</div>

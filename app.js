@@ -52,6 +52,17 @@
     recalcAllRows(); // gauge assignment depends on which table (6-1/6-2) is selected
   };
 
+  // ---------------- Duct material (Steel vs Aluminum, SMACNA Table 6-3) ----------------
+  function ductMaterial() {
+    const el = document.getElementById("p-duct-material");
+    return el ? el.value : "steel";
+  }
+  window.onDuctMaterialChange = function () {
+    recalcAllRows();
+    recalcAllRoundRows();
+    recalcRoundTotals();
+  };
+
   // ---------------- Assumptions tab ----------------
   function escapeAttr(s) {
     return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;");
@@ -214,6 +225,53 @@
       <div class="ref-tier-note">${t.altHangerNote} Drives A-13 (rod) / A-14 (angle) options in Tab 1 — see guidance text there for which bracket applies to your project's largest duct run.</div>`;
   }
 
+  function renderRoundGaugeTable() {
+    const body = document.getElementById("round-gauge-ref-body");
+    if (!body) return;
+    const t = SMACNA_ROUND.ROUND_GAUGE_TABLE;
+    const rows = t.brackets
+      .map((b) => `<tr><td>${b.maxDim}</td><td>${b.gauge}</td><td>${b.aluminumGauge}</td></tr>`)
+      .join("");
+    body.innerHTML = `<table class="ref-table"><tr><th>Duct Diameter (max. width)</th><th>Steel Ga. (min, &lt;2" w.g.)</th><th>Aluminum B.&amp;S. Gage (reference)</th></tr>${rows}</table>
+      <div class="ref-tier-note">Aluminum B.&amp;S. Gage is shown for reference only — it is not the same equivalency system as Table 6-3 (below), which is what actually drives this app's Aluminum weight calculation. Steel Ga. drives the Round Duct calculator's "Auto" gauge lookup in Tab 2 regardless of Duct Material.</div>`;
+  }
+
+  function renderAluminumTable() {
+    const body = document.getElementById("aluminum-ref-body");
+    if (!body) return;
+    const t = SMACNA.ALUMINUM_THICKNESS_TABLE;
+    const rows = Object.keys(t.byGauge)
+      .map((label) => {
+        const g = t.byGauge[label];
+        return `<tr><td>${label}</td><td>${g.minEquivMm} mm</td><td>${g.commercialMm} mm</td></tr>`;
+      })
+      .join("");
+    body.innerHTML = `<table class="ref-table"><tr><th>Steel-Equivalent Gauge</th><th>Min. Aluminum Equivalent</th><th>Commercial Size (used for weight)</th></tr>${rows}</table>
+      <div class="ref-tier-note">This app uses the Commercial Size (the stock thickness you'd actually order) for the Aluminum weight calculation — Min. Equivalent is the bare structural minimum, shown for reference. Aluminum density used: ${SMACNA.ALUMINUM_DENSITY_KG_M3} kg/m³ (general physical constant, not SMACNA-tabulated).</div>`;
+  }
+
+  function renderResidentialDuctTable() {
+    const body = document.getElementById("residential-duct-ref-body");
+    if (!body) return;
+    const t = SMACNA.RESIDENTIAL_DUCT_TABLE;
+    const rows = t.rows
+      .map((r) => `<tr><td style="text-align:left">${r.condition}</td><td>${r.minThickness}</td><td>${r.equivGalvGauge}</td><td>${r.approxAluminumGauge}</td></tr>`)
+      .join("");
+    body.innerHTML = `<table class="ref-table"><tr><th>Condition</th><th>Min. Thickness</th><th>Equiv. Galv. Gauge</th><th>Approx. Aluminum Gauge</th></tr>${rows}</table>
+      <div class="ref-tier-note">Applies specifically to single-dwelling residential heating/cooling systems — a distinct, lighter-duty use case from this app's general Table 6-1/6-2/6-8 commercial brackets, and introduces an "exposed vs. enclosed duct" distinction this app has no input for. Reference only — not wired into automatic gauge assignment or any computed quantity.</div>`;
+  }
+
+  function renderConveyingVelocityTable() {
+    const body = document.getElementById("conveying-velocity-ref-body");
+    if (!body) return;
+    const t = SMACNA.CONVEYING_VELOCITY_TABLE;
+    const rows = t.rows
+      .map((r) => `<tr><td style="text-align:left">${r.material}</td><td>${r.fpm}</td><td>${r.ms}</td></tr>`)
+      .join("");
+    body.innerHTML = `<table class="ref-table"><tr><th>Material Conveyed</th><th>Feet per Minute</th><th>m/s</th></tr>${rows}</table>
+      <div class="ref-tier-note">${t.note} Airflow/exhaust duct sizing reference — unrelated to this app's material takeoff calculations (there is no airflow/CFM input here). Reference only.</div>`;
+  }
+
   // ---------------- Gauge & References tab: five-tier breakdown ----------------
   function renderReferenceTiers() {
     const rowsFor = (tier) => SMACNA.assumptionsMeta.filter((a) => a.tier === tier);
@@ -344,7 +402,7 @@
     const overrideEl = document.getElementById("gaugeover-" + id);
     const overrideVal = overrideEl ? overrideEl.value : "Auto";
     const gaugeOverride = overrideVal === "Auto" ? null : SMACNA.gaugeInfo.findIndex((g) => g.label === overrideVal);
-    const result = SMACNA.computeRow(w, d, l, assumptions, gaugeOverride != null && gaugeOverride >= 0 ? gaugeOverride : null, sectionLength());
+    const result = SMACNA.computeRow(w, d, l, assumptions, gaugeOverride != null && gaugeOverride >= 0 ? gaugeOverride : null, sectionLength(), ductMaterial());
     rowResults.set(id, result);
 
     const fields = ["perim", "area", "ins", "seal", "adh", "pin", "tape", "strap", "corner", "angle", "rod", "insert", "nuts", "wash", "weight"];
@@ -392,7 +450,9 @@
     document.getElementById("insert-" + id).textContent = result.insert;
     document.getElementById("nuts-" + id).textContent = result.nuts;
     document.getElementById("wash-" + id).textContent = result.washers;
-    document.getElementById("weight-" + id).textContent = result.weight.toFixed(1);
+    const weightCell = document.getElementById("weight-" + id);
+    weightCell.textContent = result.weight.toFixed(1);
+    weightCell.title = result.materialLabel || "";
 
     recalcTotals();
   }
@@ -540,14 +600,14 @@
   const ROUND_CONTINGENCY_FIELDS = ["pins", "insert", "nuts", "washers"];
 
   function roundInputRowHtml(id, run, diameter, length, qty, gauge, flanges) {
-    const gaugeOptions = SMACNA.gaugeInfo.map((g) => g.label);
+    const gaugeOptions = ["Auto"].concat(SMACNA.gaugeInfo.map((g) => g.label));
     return `
     <tr class="data-row" id="round-row-${id}" data-id="${id}">
       <td><input type="text" id="rrun-${id}" value="${run}"></td>
       <td><input type="number" min="0" id="rdia-${id}" value="${diameter}"></td>
       <td><input type="number" min="0" step="0.1" id="rlen-${id}" value="${length}"></td>
       <td><input type="number" min="1" step="1" id="rqty-${id}" value="${qty}"></td>
-      <td><select id="rgauge-${id}">${gaugeOptions.map((g) => `<option value="${g}"${g === gauge ? " selected" : ""}>${g}</option>`).join("")}</select></td>
+      <td><select id="rgauge-${id}" title="Auto = SMACNA Table 6-8 lookup by diameter (Low Pressure, <2&quot; w.g.). Pick a specific gauge to override.">${gaugeOptions.map((g) => `<option value="${g}"${g === gauge ? " selected" : ""}>${g}</option>`).join("")}</select></td>
       <td><input type="number" min="0" step="1" id="rflange-${id}" value="${flanges}"></td>
       <td class="no-print"><button class="del-btn" onclick="removeRoundRow(${id})">✕</button></td>
     </tr>`;
@@ -559,6 +619,7 @@
       <td class="computed" id="rrunref-${id}">${run}</td>
       <td class="computed" id="rcirc-${id}">—</td>
       <td class="computed" id="rarea-${id}">—</td>
+      <td class="computed round-gauge-cell" id="rgaugeval-${id}">—</td>
       <td class="computed" id="rins-${id}">—</td><td class="computed" id="rseal-${id}">—</td>
       <td class="computed" id="radh-${id}">—</td><td class="computed" id="rpin-${id}">—</td>
       <td class="computed" id="rangle-${id}">—</td><td class="computed" id="rrod-${id}">—</td>
@@ -573,7 +634,7 @@
     const runName = run || "RD-" + String(id).padStart(2, "0");
     document.getElementById("round-input-body").insertAdjacentHTML(
       "beforeend",
-      roundInputRowHtml(id, runName, diameter || "", length || "", qty || 1, gauge || "ga 22", flanges || 0)
+      roundInputRowHtml(id, runName, diameter || "", length || "", qty || 1, gauge || "Auto", flanges || 0)
     );
     document.getElementById("round-results-body").insertAdjacentHTML("beforeend", roundResultsRowHtml(id, runName));
     ["rrun", "rdia", "rlen", "rqty", "rgauge", "rflange"].forEach((p) => {
@@ -613,10 +674,10 @@
     if (runNameEl && runRefEl) runRefEl.textContent = runNameEl.value;
     const inEl = document.getElementById("round-row-" + id);
     const resEl = document.getElementById("round-res-" + id);
-    const result = SMACNA_ROUND.computeRow(dia, len, qty, gauge, assumptions);
+    const result = SMACNA_ROUND.computeRow(dia, len, qty, gauge, assumptions, ductMaterial());
     roundRowResults.set(id, result);
 
-    const fields = ["circ", "area", "ins", "seal", "adh", "pin", "angle", "rod", "insert", "nuts", "wash", "weight"];
+    const fields = ["circ", "area", "gaugeval", "ins", "seal", "adh", "pin", "angle", "rod", "insert", "nuts", "wash", "weight"];
     if (!result) {
       fields.forEach((f) => (document.getElementById("r" + f + "-" + id).textContent = "—"));
       inEl.classList.add("incomplete");
@@ -629,6 +690,12 @@
 
     document.getElementById("rcirc-" + id).textContent = result.circumference.toFixed(2);
     document.getElementById("rarea-" + id).textContent = result.area.toFixed(2);
+    const gaugeCell = document.getElementById("rgaugeval-" + id);
+    gaugeCell.textContent = (result.gaugeOutOfRange ? "⚠ " : "") + result.gaugeLabel + (result.gaugeAuto ? " (auto)" : " (manual)");
+    gaugeCell.title = result.gaugeOutOfRange
+      ? "Exceeds SMACNA Table 6-8's documented 84\" (2134mm) range — this gauge is extrapolated from the largest bracket, not a verified table value. Use the manual gauge override."
+      : "";
+    if (resEl) resEl.classList.toggle("gauge-outrange", !!result.gaugeOutOfRange);
     document.getElementById("rins-" + id).textContent = result.insulation.toFixed(2);
     document.getElementById("rseal-" + id).textContent = result.sealant.toFixed(2);
     document.getElementById("radh-" + id).textContent = result.adhesive.toFixed(2);
@@ -638,7 +705,9 @@
     document.getElementById("rinsert-" + id).textContent = result.insert;
     document.getElementById("rnuts-" + id).textContent = result.nuts;
     document.getElementById("rwash-" + id).textContent = result.washers;
-    document.getElementById("rweight-" + id).textContent = result.weight.toFixed(1);
+    const rWeightCell = document.getElementById("rweight-" + id);
+    rWeightCell.textContent = result.weight.toFixed(1);
+    rWeightCell.title = result.materialLabel || "";
 
     recalcRoundTotals();
   }
@@ -693,6 +762,10 @@
     const nIncomplete = document.querySelectorAll("#round-input-body tr.data-row.incomplete").length;
     const incompleteWarning = document.getElementById("round-incomplete-warning");
     if (incompleteWarning) incompleteWarning.style.display = nIncomplete > 0 ? "block" : "none";
+
+    const nOutOfRange = document.querySelectorAll("#round-results-body tr.data-row.gauge-outrange").length;
+    const outOfRangeWarning = document.getElementById("round-gauge-outrange-warning");
+    if (outOfRangeWarning) outOfRangeWarning.style.display = nOutOfRange > 0 ? "block" : "none";
 
     renderRoundSummary(totals, wasteFactor, fittingsArea);
   }
@@ -876,11 +949,11 @@
         const run = pv("rrun-" + id);
         if (!r) return `<tr><td>${run}</td><td colspan="5" style="color:#9A2323">Incomplete — missing Diameter/Length/Quantity</td></tr>`;
         return `<tr><td>${run}</td><td>${pv("rdia-" + id)}</td><td>${pv("rlen-" + id)}</td><td>${pv("rqty-" + id)}</td>
-          <td>${r.circumference.toFixed(2)}</td><td>${r.area.toFixed(2)}</td><td>${r.gaugeLabel} (manual)</td></tr>`;
+          <td>${r.circumference.toFixed(2)}</td><td>${r.area.toFixed(2)}</td><td>${r.gaugeLabel}${r.gaugeAuto ? " (auto, SMACNA T6-8)" : " (manual override)"}${r.gaugeOutOfRange ? " ⚠ >84\" range" : ""}</td></tr>`;
       })
       .join("");
 
-    // Gauge grouping: round duct gauge is per-row manual, so group by whatever labels are actually in use.
+    // Gauge grouping: round duct gauge is resolved per-row (auto-lookup or manual override), so group by whatever labels are actually in use.
     const byGauge = {};
     roundRowResults.forEach((r) => {
       if (!r) return;
@@ -927,7 +1000,7 @@
       </div>
       <div class="report-section">
         <div class="report-section-title">2. Calculation Summary — By Selected Gauge</div>
-        <div class="report-note">Round duct gauge is manually selected per run (not auto-looked-up) — grouped here by whichever gauge labels are actually in use.</div>
+        <div class="report-note">Round duct gauge is resolved per run (SMACNA Table 6-8 auto-lookup by diameter, or manual override) — grouped here by whichever gauge labels are actually in use.</div>
         <table class="report-table">
           <thead><tr><th>Gauge</th><th>Final Takeoff Area</th><th>Audit detail</th></tr></thead>
           <tbody>${gaugeRowsHtml || '<tr><td colspan="3">No gauge totals — enter round duct runs first.</td></tr>'}</tbody>
@@ -959,6 +1032,7 @@
     const modeLabel = ductMode === "rect" ? "Rectangular" : "Round";
     const pressureClass = pv("p-pressure-class") || "Low";
     const designPressure = pv("p-design-pressure");
+    const materialLabel = ductMaterial() === "aluminum" ? "Aluminum (Alloy 3003-H14, SMACNA T6-3 equiv.)" : "Galvanized Steel";
 
     container.innerHTML = `
       <div class="report-header">
@@ -970,6 +1044,7 @@
           <tr><td><b>Location:</b> ${pv("p-loc")}</td><td><b>Checked By:</b> ${pv("p-check")}</td></tr>
           <tr><td><b>Revision:</b> ${pv("p-rev")}</td><td><b>Sheet:</b> ${pv("p-sheet")}</td></tr>
           <tr><td><b>Pressure Class (terminology):</b> ${pressureClass}${pressureClass !== "Low" ? " — classification label only, not backed by a verified gauge/reinforcement table in this app" : ""}</td><td><b>Design Static Pressure:</b> ${designPressure ? designPressure + " in.w.g." : "—"}</td></tr>
+          <tr><td><b>Duct Material:</b> ${materialLabel}</td><td></td></tr>
         </table>
       </div>
 
@@ -1025,14 +1100,18 @@
     renderFormulaRefRound();
     renderGaugeTable();
     renderDuctSupportTable();
+    renderRoundGaugeTable();
+    renderAluminumTable();
+    renderResidentialDuctTable();
+    renderConveyingVelocityTable();
     renderReferenceTiers();
     window.addRow("SA-01", "SA", 400, 300, 10);
     window.addRow("SA-02", "SA", 600, 400, 8);
     window.addRow("SA-03", "SA", 900, 600, 12);
     window.addRow("SA-04", "SA", 1200, 800, 6);
     window.addRow("SA-05", "RA", 280, 200, 15);
-    window.addRoundRow("RD-01", 300, 5, 1, "ga 22", 0);
-    window.addRoundRow("RD-02", 450, 8, 2, "ga 20", 1);
+    window.addRoundRow("RD-01", 300, 5, 1, "Auto", 0);
+    window.addRoundRow("RD-02", 450, 8, 2, "Auto", 1);
 
     // ---- Splash branding: remove the moment first render is done, not on
     // a timer — this is a static local app, so that's effectively instant. ----
