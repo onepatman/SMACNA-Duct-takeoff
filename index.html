@@ -312,6 +312,12 @@
   <div class="subsection-header">Material Thickness Equivalency — SMACNA Table 6-3 (Rectangular Aluminum Duct, Alloy 3003-H14)</div>
   <div class="legend-box">Converts the steel-equivalent gauge Tab 2 already assigns into an aluminum thickness — used when Tab 1's Duct Material is set to Aluminum. Table 6-3's own weight row says "Consult Appendix-5 for Weights," which wasn't part of the supplied source pages, so weight here is computed from thickness × a general aluminum density constant (2700 kg/m³) instead of a SMACNA-tabulated figure. <b>Not yet implemented:</b> Table 6-4 (Dimension Adjustments — keyed by a different "Rigidity Class" A–L lettering not confirmed to align with Table 6-1/6-2's Reinf. Code Grade C–I) and Table 6-5 (Reinforcement angle/bar aluminum equivalents — this app hasn't transcribed the underlying steel angle/bar sizes for the reinforcement codes either).</div>
   <div id="aluminum-ref-body"></div>
+  <div class="subsection-header">Duct Thickness — SMACNA Table 6-9 (Single-Dwelling Unit, Heating or Cooling)</div>
+  <div class="legend-box">Residential-only reference — a distinct, lighter-duty use case from the general commercial brackets above. Not wired into any calculation in this app; see the note below the table.</div>
+  <div id="residential-duct-ref-body"></div>
+  <div class="subsection-header">Minimum Conveying Velocities — SMACNA Table 5-1</div>
+  <div class="legend-box">Airflow/exhaust duct sizing reference (dust/fume conveying velocity) — a different engineering discipline from material takeoff. This app has no airflow/CFM input, so this table is reference only and does not feed any calculation here.</div>
+  <div id="conveying-velocity-ref-body"></div>
   <div class="subsection-header">Assumption values in this tier</div>
   <table class="ref-table"><tr><th>Ref.</th><th>Value</th><th>Description</th><th>Guidance</th></tr><tbody id="ref-primary-body"></tbody></table>
 

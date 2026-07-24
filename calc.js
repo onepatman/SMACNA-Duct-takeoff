@@ -127,6 +127,42 @@ const SMACNA = (function () {
   // table ("Appendix-5") wasn't supplied.
   const ALUMINUM_DENSITY_KG_M3 = 2700;
 
+  // ---- SMACNA Table 6-9 — Thickness of Metal Ducts and Plenums for a
+  // Single-Dwelling Unit (residential heating/cooling). Same source/
+  // provenance as the tables above, transcribed 2026-07-24. This governs
+  // a lighter-duty, distinct use case (residential, not general/commercial)
+  // from Table 6-1/6-2/6-8's brackets, and introduces an "exposed vs.
+  // enclosed duct" distinction this app has no input for — reference only,
+  // not wired into automatic gauge assignment or any computed quantity.
+  const RESIDENTIAL_DUCT_TABLE = {
+    tableRef: "SMACNA Table 6-9 (Single-Dwelling Unit, Heating or Cooling)",
+    rows: [
+      { condition: "Round ducts and enclosed rectangular ducts — 14\" (356mm) or less", minThickness: "0.013\" (0.33 mm)", equivGalvGauge: "30", approxAluminumGauge: "26" },
+      { condition: "Round ducts and enclosed rectangular ducts — Over 14\" (356mm)",     minThickness: "0.016\" (0.41 mm)", equivGalvGauge: "28", approxAluminumGauge: "24" },
+      { condition: "Exposed rectangular ducts — 14\" (356mm) or less",                   minThickness: "0.016\" (0.41 mm)", equivGalvGauge: "28", approxAluminumGauge: "26" },
+      { condition: "Exposed rectangular ducts — Over 14\" (356mm)",                      minThickness: "0.019\" (0.48 mm)", equivGalvGauge: "26", approxAluminumGauge: "22" }
+    ]
+  };
+
+  // ---- SMACNA Table 5-1 — Minimum Conveying Velocities. Same source/
+  // provenance as the tables above, transcribed 2026-07-24. This is an
+  // airflow/exhaust-duct SIZING reference (dust/fume conveying velocity),
+  // an entirely different engineering discipline from material takeoff —
+  // this app has no airflow/CFM input anywhere, so there is nothing for
+  // this table to compute against. Reference only.
+  const CONVEYING_VELOCITY_TABLE = {
+    tableRef: "SMACNA Table 5-1 (Minimum Conveying Velocities)",
+    rows: [
+      { material: "Vapors, gases, smoke, fumes", fpm: "Any", ms: "Any" },
+      { material: "Fine light dusts — cotton, lint, and wood flour (100 mesh and under)", fpm: "2,000", ms: "10.2" },
+      { material: "Dry dusts, powders — fine rubber molding powder, soap dust", fpm: "2,500", ms: "12.7" },
+      { material: "Industrial dusts — average (sawdust, grinding dust, coal dust)", fpm: "3,500", ms: "17.8" },
+      { material: "Industrial dusts — heavy (metal turnings, lead dust)", fpm: "4,000", ms: "20.3" },
+      { material: "Moist dusts and chips — lead dust with chips, sticky buffing lint, quick-lime dust", fpm: "4,500", ms: "22.9" }
+    ],
+    note: "Aluminum and magnesium powder velocity shall not be less than 4,000 fpm (20.3 m/s)."
+  };
+
   // ---- Material coverage assumptions (A-01 ... A-15) ----
   // tier: which of the four Gauge & References categories this belongs to.
   // "existing" = carried over from the app's pre-existing source workbook,
@@ -380,6 +416,7 @@ const SMACNA = (function () {
 
   return {
     gaugeInfo, RECT_GAUGE_TABLES, DUCT_SUPPORT_TABLE, ALUMINUM_THICKNESS_TABLE, ALUMINUM_DENSITY_KG_M3,
+    RESIDENTIAL_DUCT_TABLE, CONVEYING_VELOCITY_TABLE,
     assumptionsMeta, formulaRef, decimalCols, gaFields, contingencyFields,
     defaultAssumptions, gaugeIndex, gaugeBracket, materialWeight, computeRow, sumRows, sumGauge
   };

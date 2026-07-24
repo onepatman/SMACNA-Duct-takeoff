@@ -250,6 +250,28 @@
       <div class="ref-tier-note">This app uses the Commercial Size (the stock thickness you'd actually order) for the Aluminum weight calculation — Min. Equivalent is the bare structural minimum, shown for reference. Aluminum density used: ${SMACNA.ALUMINUM_DENSITY_KG_M3} kg/m³ (general physical constant, not SMACNA-tabulated).</div>`;
   }
 
+  function renderResidentialDuctTable() {
+    const body = document.getElementById("residential-duct-ref-body");
+    if (!body) return;
+    const t = SMACNA.RESIDENTIAL_DUCT_TABLE;
+    const rows = t.rows
+      .map((r) => `<tr><td style="text-align:left">${r.condition}</td><td>${r.minThickness}</td><td>${r.equivGalvGauge}</td><td>${r.approxAluminumGauge}</td></tr>`)
+      .join("");
+    body.innerHTML = `<table class="ref-table"><tr><th>Condition</th><th>Min. Thickness</th><th>Equiv. Galv. Gauge</th><th>Approx. Aluminum Gauge</th></tr>${rows}</table>
+      <div class="ref-tier-note">Applies specifically to single-dwelling residential heating/cooling systems — a distinct, lighter-duty use case from this app's general Table 6-1/6-2/6-8 commercial brackets, and introduces an "exposed vs. enclosed duct" distinction this app has no input for. Reference only — not wired into automatic gauge assignment or any computed quantity.</div>`;
+  }
+
+  function renderConveyingVelocityTable() {
+    const body = document.getElementById("conveying-velocity-ref-body");
+    if (!body) return;
+    const t = SMACNA.CONVEYING_VELOCITY_TABLE;
+    const rows = t.rows
+      .map((r) => `<tr><td style="text-align:left">${r.material}</td><td>${r.fpm}</td><td>${r.ms}</td></tr>`)
+      .join("");
+    body.innerHTML = `<table class="ref-table"><tr><th>Material Conveyed</th><th>Feet per Minute</th><th>m/s</th></tr>${rows}</table>
+      <div class="ref-tier-note">${t.note} Airflow/exhaust duct sizing reference — unrelated to this app's material takeoff calculations (there is no airflow/CFM input here). Reference only.</div>`;
+  }
+
   // ---------------- Gauge & References tab: five-tier breakdown ----------------
   function renderReferenceTiers() {
     const rowsFor = (tier) => SMACNA.assumptionsMeta.filter((a) => a.tier === tier);
@@ -1080,6 +1102,8 @@
     renderDuctSupportTable();
     renderRoundGaugeTable();
     renderAluminumTable();
+    renderResidentialDuctTable();
+    renderConveyingVelocityTable();
     renderReferenceTiers();
     window.addRow("SA-01", "SA", 400, 300, 10);
     window.addRow("SA-02", "SA", 600, 400, 8);
