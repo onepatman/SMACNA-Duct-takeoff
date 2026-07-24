@@ -69,7 +69,7 @@
       .map((a) => {
         const rangeLine =
           a.min != null
-            ? `<div style="font-size:.68rem;color:#607D8B;margin-top:3px">Typical: ${a.typical} &nbsp;|&nbsp; Range: ${a.min}–${a.max} ${a.unit}</div>`
+            ? `<div style="font-size:.68rem;color:#607D8B;margin-top:3px;text-align:center">Typical: ${a.typical} &nbsp;|&nbsp; Range: ${a.min}–${a.max} ${a.unit}</div>`
             : "";
         const guidanceLine = a.guidance
           ? `<div style="font-size:.68rem;color:#607D8B;font-style:italic;margin-top:3px">${a.guidance}</div>`
