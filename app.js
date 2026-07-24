@@ -958,5 +958,14 @@
     window.addRow("SA-05", "RA", 280, 200, 15);
     window.addRoundRow("RD-01", 300, 5, 1, "ga 22", 0);
     window.addRoundRow("RD-02", 450, 8, 2, "ga 20", 1);
+
+    // ---- Splash branding: remove the moment first render is done, not on
+    // a timer — this is a static local app, so that's effectively instant. ----
+    const splash = document.getElementById("app-splash");
+    if (splash) {
+      splash.classList.add("splash-hidden");
+      splash.addEventListener("transitionend", () => splash.remove(), { once: true });
+      setTimeout(() => splash.remove(), 400); // fallback if transitionend doesn't fire
+    }
   });
 })();

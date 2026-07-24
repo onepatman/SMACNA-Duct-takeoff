@@ -1,4 +1,4 @@
-const CACHE_NAME = "smacna-takeoff-v8";
+const CACHE_NAME = "smacna-takeoff-v9";
 const PRECACHE_URLS = [
   "./index.html",
   "./manifest.json",
@@ -7,7 +7,9 @@ const PRECACHE_URLS = [
   "./app.js",
   "./icon-192.png",
   "./icon-512.png",
-  "./favicon.png"
+  "./favicon.png",
+  "./apple-touch-icon.png",
+  "./logo-header.png"
 ];
 
 self.addEventListener("install", (event) => {
