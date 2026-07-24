@@ -10,7 +10,6 @@
 <link rel="icon" href="./favicon.png">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="stylesheet" href="./style.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -19,7 +18,7 @@
   <h1>RECTANGULAR DUCT MATERIAL TAKEOFF <span class="offline-pill">OFFLINE</span></h1>
   <div class="sub">SMACNA HVAC Duct Construction Standards — 3rd Ed. | Low Pressure Class, Max 2 in. w.g. (500 Pa) | Rectangular Galvanized Sheet Metal Ductwork</div>
   <span class="badge-pill">Philippine PSME Code Compliant</span>
-  <span class="badge-pill">Form: ME-DUCT-001</span>
+  <span class="badge-pill">Reference Basis: SMACNA HVAC Duct Construction Standards, 3rd Ed.</span>
 </div>
 
 <div class="tabs no-print">
@@ -70,7 +69,6 @@
     <button class="btn btn-add" onclick="addRow()">+ Add Duct Run</button>
     <button class="btn btn-clear" onclick="clearAllRows()">Clear All Rows</button>
     <button class="btn btn-pdf" onclick="window.print()">🖶 Save as PDF</button>
-    <button class="btn btn-xlsx" onclick="exportExcel()">⬇ Download Excel (.xlsx)</button>
   </div>
 
   <div class="formula-box">
@@ -155,12 +153,11 @@
 
 <div class="black-bar">
   REFERENCES: SMACNA HVAC Duct Construction Standards, 3rd Edition (2005) &nbsp;|&nbsp; PSME Code (2012 Ed.) Part 1 &amp; 2 &nbsp;|&nbsp;
-  ASHRAE Fundamentals 2021 (Ch. 21 — Duct Design) &nbsp;|&nbsp; Based on template ME-DUCT-001 &nbsp;|&nbsp;
+  ASHRAE Fundamentals 2021 (Ch. 21 — Duct Design) &nbsp;|&nbsp;
   Verify all quantities with final construction drawings before procurement.
 </div>
 
 <script src="./calc.js"></script>
-<script src="./export.js"></script>
 <script src="./app.js"></script>
 </body>
 </html>

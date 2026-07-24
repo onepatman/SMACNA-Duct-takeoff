@@ -53,7 +53,7 @@ const SMACNA = (function () {
     { name: "EST. WEIGHT (bonus)", col: "AA", formula: "Area(assigned gauge) × Gauge Unit Weight (kg/sq m)", note: "Added in this fillable version for quick steel-order weight estimates; not in the source workbook." }
   ];
 
-  const decimalCols = ["ga26", "ga24", "ga22", "ga20", "ga18", "ga16", "ins", "seal", "adh", "corner", "angle", "rod", "weight"];
+  const decimalCols = ["ga26", "ga24", "ga22", "ga20", "ga18", "ga16", "insulation", "sealant", "adhesive", "corner", "angle", "rod", "weight"];
   const gaFields = ["ga26", "ga24", "ga22", "ga20", "ga18", "ga16"];
 
   function defaultAssumptions() {

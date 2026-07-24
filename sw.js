@@ -1,11 +1,10 @@
-const CACHE_NAME = "smacna-takeoff-v3";
+const CACHE_NAME = "smacna-takeoff-v4";
 const PRECACHE_URLS = [
   "./index.html",
   "./manifest.json",
   "./style.css",
   "./calc.js",
   "./app.js",
-  "./export.js",
   "./icon-192.png",
   "./icon-512.png",
   "./favicon.png"
@@ -25,11 +24,9 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-// Cache-first for everything: the core calculator (geometry/gauge/material math)
-// needs zero network access once installed. The one exception is the SheetJS
-// (xlsx) library loaded from cdnjs for the "Download Excel" button — that is
-// cached opportunistically below on first successful fetch, so Excel export
-// also works offline after the app has been opened online at least once.
+// Cache-first for everything: the calculator (geometry/gauge/material math)
+// needs zero network access once installed — there are no external
+// dependencies left to fetch.
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 

@@ -173,22 +173,44 @@
 
   function recalcTotals() {
     const results = Array.from(rowResults.values());
-    const cols = ["ins", "seal", "adh", "pin", "tape", "strap", "corner", "angle", "rod", "insert", "nuts", "washers", "weight"];
-    const idSuffix = { ins: "ins", seal: "seal", adh: "adh", pin: "pin", tape: "tape", strap: "strap", corner: "corner", angle: "angle", rod: "rod", insert: "insert", nuts: "nuts", washers: "wash", weight: "weight" };
+    // field: real computeRow() result key. suf: DOM id suffix (t-<suf> / w-<suf>).
+    // Kept as one paired list (not two separately-keyed lookups) specifically
+    // because a field/suffix name mismatch previously made Insulation/Sealant/
+    // Adhesive/Duct-Pin grand totals silently render as 0.
+    const colDefs = [
+      { field: "insulation", suf: "ins" },
+      { field: "sealant", suf: "seal" },
+      { field: "adhesive", suf: "adh" },
+      { field: "pins", suf: "pin" },
+      { field: "tape", suf: "tape" },
+      { field: "strap", suf: "strap" },
+      { field: "corner", suf: "corner" },
+      { field: "angle", suf: "angle" },
+      { field: "rod", suf: "rod" },
+      { field: "insert", suf: "insert" },
+      { field: "nuts", suf: "nuts" },
+      { field: "washers", suf: "wash" },
+      { field: "weight", suf: "weight" }
+    ];
 
     const totals = {};
-    cols.forEach((c) => (totals[c] = SMACNA.sumRows(results, c)));
+    colDefs.forEach(({ field }) => (totals[field] = SMACNA.sumRows(results, field)));
     SMACNA.gaFields.forEach((g) => (totals[g] = SMACNA.sumGauge(results, g)));
 
-    const allCols = [...SMACNA.gaFields, ...cols];
-    allCols.forEach((c) => {
-      const t = totals[c];
-      const suf = idSuffix[c] || c;
+    colDefs.forEach(({ field, suf }) => {
+      const t = totals[field];
       const tEl = document.getElementById("t-" + suf);
       const wEl = document.getElementById("w-" + suf);
-      const dec = SMACNA.decimalCols.includes(c);
+      const dec = SMACNA.decimalCols.includes(field);
       if (tEl) tEl.textContent = dec ? t.toFixed(2) : Math.round(t * 100) / 100;
       if (wEl) wEl.textContent = dec ? (t * 1.2).toFixed(2) : Math.round(t * 1.2 * 100) / 100;
+    });
+    SMACNA.gaFields.forEach((g) => {
+      const t = totals[g];
+      const tEl = document.getElementById("t-" + g);
+      const wEl = document.getElementById("w-" + g);
+      if (tEl) tEl.textContent = t.toFixed(2);
+      if (wEl) wEl.textContent = (t * 1.2).toFixed(2);
     });
 
     const totalArea = SMACNA.gaFields.reduce((s, g) => s + totals[g], 0);
