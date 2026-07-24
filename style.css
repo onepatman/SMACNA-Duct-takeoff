@@ -109,7 +109,17 @@ table.assump-table th,table.ref-table th{background:var(--graphite); color:#fff;
   text-transform:uppercase; letter-spacing:.3px;}
 table.assump-table td,table.ref-table td{border:1px solid var(--border); padding:6px 8px;}
 table.ref-table tr:nth-child(even) td{background:#FAFBFC;}
-table.assump-table td.rate-cell input{width:84px; margin:0 auto;}
+
+/* Balanced column widths — auto-layout was starving Ref./Rate Value (causing
+   "A-01" to wrap) while over-widening Description/Code-Source. */
+table.assump-table{table-layout:fixed;}
+table.assump-table th:nth-child(1),table.assump-table td:nth-child(1){width:6%; white-space:nowrap;}
+table.assump-table th:nth-child(2),table.assump-table td:nth-child(2){width:15%;}
+table.assump-table th:nth-child(3),table.assump-table td:nth-child(3){width:9%;}
+table.assump-table th:nth-child(4),table.assump-table td:nth-child(4){width:37%;}
+table.assump-table th:nth-child(5),table.assump-table td:nth-child(5){width:33%;}
+table.assump-table td{word-wrap:break-word; overflow-wrap:break-word;}
+table.assump-table td.rate-cell input{width:84px; margin:0 auto; max-width:100%;}
 table.assump-table tr.locked-row td{background:#ECEFF1;}
 table.assump-table tr.locked-row td.rate-cell input{background:#ECEFF1; border-color:#90A4AE; color:#37474F; cursor:not-allowed;}
 table.assump-table tr.secondary-row td{background:#EDE7F6;}
