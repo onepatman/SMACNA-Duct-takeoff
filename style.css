@@ -48,7 +48,9 @@ body{
   text-transform:uppercase; letter-spacing:.4px;}
 .top-bar{text-align:center;}
 .top-bar .install-btn{background:var(--accent-deep); color:#fff; border:none; padding:8px 14px;
-  border-radius:3px; font-size:.78rem; font-weight:600; cursor:pointer; white-space:nowrap;}
+  border-radius:4px; font-size:.78rem; font-weight:600; cursor:pointer; white-space:nowrap;
+  box-shadow:0 1px 3px rgba(0,0,0,.25); transition:transform .1s ease, box-shadow .1s ease;}
+.top-bar .install-btn:hover{transform:translateY(-1px); box-shadow:0 3px 7px rgba(0,0,0,.3);}
 .top-bar .install-btn:disabled{display:none;}
 
 /* ---------- Opening / splash branding ---------- */
@@ -78,32 +80,35 @@ body{
 .tab-content{display:none; padding:18px 20px 44px; max-width:1500px; margin:0 auto;}
 .tab-content.active{display:block;}
 
-.duct-mode-toggle{display:flex; gap:2px; margin-bottom:14px; border:1px solid var(--border); border-radius:4px; overflow:hidden; width:fit-content;}
+.duct-mode-toggle{display:flex; gap:2px; margin-bottom:14px; border:1px solid var(--border); border-radius:4px; overflow:hidden; width:fit-content;
+  box-shadow:0 1px 3px rgba(13,27,42,.08);}
 .duct-mode-btn{padding:10px 18px; border:none; background:#EDEFF1; color:var(--graphite); font-weight:700;
-  font-size:.82rem; cursor:pointer;}
+  font-size:.82rem; cursor:pointer; transition:background .12s ease;}
+.duct-mode-btn:hover:not(.active){background:#DCE4E9;}
 .duct-mode-btn.active{background:var(--accent-deep); color:#fff;}
 
 /* ---------- Section headers / boxes ---------- */
-.section-header{background:var(--navy-2); color:#fff; border-left:5px solid var(--accent);
+.section-header{background:linear-gradient(135deg,var(--navy-2),var(--navy)); color:#fff; border-left:5px solid var(--accent);
   padding:10px 14px; margin:22px 0 10px; font-weight:700; display:flex; align-items:center;
-  font-size:.92rem; border-radius:2px;}
+  font-size:.92rem; border-radius:4px; box-shadow:0 2px 6px rgba(13,27,42,.18);}
 .badge{display:inline-flex; min-width:24px; height:24px; border-radius:50%; background:var(--accent-deep);
   color:#fff; align-items:center; justify-content:center; font-weight:700; margin-right:10px;
-  font-size:.76rem; flex-shrink:0; border:1px solid var(--accent);}
+  font-size:.76rem; flex-shrink:0; border:1px solid var(--accent); box-shadow:0 1px 3px rgba(0,0,0,.25);}
 .subsection-header{color:var(--graphite); font-weight:700; font-size:.82rem; margin:16px 0 4px;
   text-transform:uppercase; letter-spacing:.3px; border-bottom:2px solid var(--border); padding-bottom:4px;}
 
 .formula-box{background:#EEF2F5; border:1px solid var(--border); border-left:4px solid var(--accent-deep);
-  padding:10px 14px; font-family:"Courier New",monospace; margin:10px 0; border-radius:3px; font-size:.8rem;
-  overflow-x:auto; color:#243342;}
+  padding:10px 14px; font-family:"Courier New",monospace; margin:10px 0; border-radius:4px; font-size:.8rem;
+  overflow-x:auto; color:#243342; box-shadow:0 1px 3px rgba(21,42,62,.08);}
 .legend-box{background:#FAFBFC; border:1px dashed var(--steel-light); padding:8px 12px; margin:10px 0;
-  font-size:.78rem; border-radius:3px; color:#3C4B57;}
+  font-size:.78rem; border-radius:4px; color:#3C4B57;}
 .result-box{border:2px solid var(--navy); padding:10px 16px; font-weight:700; background:#fff;
-  display:inline-block; margin:8px 6px 8px 0; border-radius:3px; font-size:.92rem; color:var(--navy);}
-.warning-box{background:var(--warn-bg); border:1px solid var(--warn-border); color:var(--warn-text);
-  padding:10px 14px; border-radius:3px; margin:10px 0; font-size:.8rem;}
-.ok-box{background:var(--ok-bg); border:1px solid var(--ok-border); color:var(--ok-text); padding:10px 14px;
-  border-radius:3px; margin:10px 0; font-size:.8rem;}
+  display:inline-block; margin:8px 6px 8px 0; border-radius:4px; font-size:.92rem; color:var(--navy);
+  box-shadow:0 2px 5px rgba(13,27,42,.1);}
+.warning-box{background:var(--warn-bg); border:1px solid var(--warn-border); border-left:4px solid var(--warn-border);
+  color:var(--warn-text); padding:10px 14px; border-radius:4px; margin:10px 0; font-size:.8rem;}
+.ok-box{background:var(--ok-bg); border:1px solid var(--ok-border); border-left:4px solid var(--ok-border);
+  color:var(--ok-text); padding:10px 14px; border-radius:4px; margin:10px 0; font-size:.8rem;}
 
 .ref-tier-header{font-weight:800; font-size:1rem; padding:10px 14px; margin:26px 0 2px; border-radius:3px 3px 0 0; color:#fff;}
 .ref-tier-note{font-size:.76rem; font-style:italic; color:#3C4B57; background:#FAFBFC; border:1px solid var(--border);
@@ -113,7 +118,8 @@ body{
 .ref-tier-header.tier-assumption{background:var(--accent-deep);}
 .ref-tier-header.tier-general{background:#5D8AA8;}
 
-.summary-primary-box{border:2px solid var(--navy); background:#fff; border-radius:3px; padding:10px 14px; margin:8px 0;}
+.summary-primary-box{border:2px solid var(--navy); background:#fff; border-radius:4px; padding:10px 14px; margin:8px 0;
+  box-shadow:0 2px 5px rgba(13,27,42,.08);}
 .summary-primary-box .sp-label{font-size:.72rem; color:var(--graphite); text-transform:uppercase; letter-spacing:.3px;}
 .summary-primary-box .sp-value{font-size:1.1rem; font-weight:800; color:var(--navy);}
 .summary-primary-box .sp-audit{font-size:.72rem; color:#607D8B; margin-top:2px;}
@@ -140,21 +146,25 @@ table.assump-table td,table.ref-table td{border:1px solid var(--border); padding
 table.ref-table tr:nth-child(even) td{background:#FAFBFC;}
 
 /* Balanced column widths — auto-layout was starving Ref./Rate Value (causing
-   "A-01" to wrap) while over-widening Description/Code-Source. */
-table.assump-table{table-layout:fixed; min-width:640px;}
+   "A-01" to wrap) while over-widening Description/Code-Source. Unit now
+   carries a full descriptive label ("Meter (m)") instead of bare shorthand,
+   so it needs more room than the original 9% — taken from Description/Source. */
+table.assump-table{table-layout:fixed; min-width:760px;}
 table.assump-table th:nth-child(1),table.assump-table td:nth-child(1){width:6%; white-space:nowrap; text-align:center;}
-table.assump-table th:nth-child(2),table.assump-table td:nth-child(2){width:15%; text-align:center;}
-table.assump-table th:nth-child(3),table.assump-table td:nth-child(3){width:9%; text-align:center;}
-table.assump-table th:nth-child(4),table.assump-table td:nth-child(4){width:37%;}
-table.assump-table th:nth-child(5),table.assump-table td:nth-child(5){width:33%;}
+table.assump-table th:nth-child(2),table.assump-table td:nth-child(2){width:14%; text-align:center;}
+table.assump-table th:nth-child(3),table.assump-table td:nth-child(3){width:20%; text-align:center;}
+table.assump-table th:nth-child(4),table.assump-table td:nth-child(4){width:33%;}
+table.assump-table th:nth-child(5),table.assump-table td:nth-child(5){width:27%;}
 table.assump-table td{word-wrap:break-word; overflow-wrap:break-word; vertical-align:top;}
 table.assump-table td.rate-cell input{width:84px; margin:0 auto; max-width:100%;}
+table.assump-table tbody tr:not(.locked-row):not(.secondary-row):hover td{background:#EFF6FB;}
 table.assump-table tr.locked-row td{background:#ECEFF1;}
 table.assump-table tr.locked-row td.rate-cell input{background:#ECEFF1; border-color:#90A4AE; color:#37474F; cursor:not-allowed;}
 table.assump-table tr.secondary-row td{background:#EDE7F6;}
 table.assump-table tr.secondary-row td.rate-cell select{background:#F3EFFB; border-color:#7E57C2;}
 
-.table-scroll{overflow-x:auto; border:1px solid var(--border); border-radius:3px; margin-top:8px;}
+.table-scroll{overflow-x:auto; border:1px solid var(--border); border-radius:5px; margin-top:8px;
+  box-shadow:0 1px 4px rgba(13,27,42,.06);}
 table.takeoff{border-collapse:collapse; font-size:.72rem; min-width:2100px;}
 table.takeoff th,table.takeoff td{border:1px solid var(--border); padding:4px 5px; text-align:center; white-space:nowrap;}
 table.takeoff th{color:#0D1B2A; font-size:.66rem; font-weight:700; background:#DCE4E9;}
@@ -172,7 +182,10 @@ table.input-table{min-width:0;}
 .del-btn{background:var(--warn-border); color:#fff; border:none; border-radius:3px; padding:5px 9px; cursor:pointer; font-size:.72rem;}
 
 .action-bar{margin:12px 0; display:flex; gap:8px; flex-wrap:wrap;}
-.btn{border:none; padding:10px 16px; border-radius:3px; font-weight:600; cursor:pointer; font-size:.8rem; min-height:38px;}
+.btn{border:none; padding:10px 16px; border-radius:4px; font-weight:600; cursor:pointer; font-size:.8rem; min-height:38px;
+  box-shadow:0 1px 3px rgba(0,0,0,.15); transition:transform .1s ease, box-shadow .1s ease;}
+.btn:hover{transform:translateY(-1px); box-shadow:0 3px 7px rgba(0,0,0,.2);}
+.btn:active{transform:translateY(0); box-shadow:0 1px 2px rgba(0,0,0,.15);}
 .btn-add{background:#2E7D32; color:#fff;}
 .btn-clear{background:var(--steel); color:#fff;}
 .btn-pdf{background:var(--navy); color:#fff;}
@@ -209,7 +222,15 @@ body.offline .offline-pill{display:inline-block;}
   table.assump-table{min-width:0; width:100%; table-layout:auto;}
   table.assump-table .assump-thead-row{display:none;}
   table.assump-table tbody{display:block;}
-  table.assump-table tbody tr{display:block; margin-bottom:12px; border:1px solid var(--border); border-radius:6px; overflow:hidden;}
+  /* Left accent stripe echoes the legend colors (locked=gray, secondary=purple,
+     editable=blue) so a tier is identifiable from the card edge, not just the
+     background tint — plus a soft shadow so cards read as distinct panels
+     instead of a flat list. */
+  table.assump-table tbody tr{display:block; margin-bottom:12px; background:#fff;
+    border:1px solid var(--border); border-left:4px solid var(--accent-deep); border-radius:6px;
+    overflow:hidden; box-shadow:0 1px 4px rgba(13,27,42,.08);}
+  table.assump-table tbody tr.locked-row{border-left-color:var(--steel-light);}
+  table.assump-table tbody tr.secondary-row{border-left-color:#7E57C2;}
   table.assump-table tbody td{display:block; width:100% !important; text-align:left !important; border:none; border-bottom:1px solid var(--border); padding:8px 10px;}
   table.assump-table tbody td:last-child{border-bottom:none;}
   table.assump-table tbody td::before{content:attr(data-label); display:block; font-size:.62rem; font-weight:700;
