@@ -142,33 +142,58 @@
   <div class="warning-box" id="incomplete-warning" style="display:none">⚠ Rows highlighted in red are missing Width, Depth, or Length and are excluded from totals until completed.</div>
 
   <div class="section-header"><span class="badge">2</span> SUMMARY</div>
-  <div class="result-box">TOTAL DUCT SURFACE AREA: <span id="sum-area">0</span> sq m</div>
-  <div class="result-box">TOTAL SHEET METAL WEIGHT (incl. 20% waste): <span id="sum-weight">0</span> kg</div>
-  <div class="result-box">TOTAL HANGER POINTS (approx.): <span id="sum-hangers">0</span> pts</div>
-  <div class="ok-box" id="rows-ok">0 duct run(s) computed. Totals and 20% waste allowance update live as you edit any cell above.</div>
+  <div id="summary-body"></div>
 </div>
 
-<!-- ================= TAB 3 : GAUGE REFERENCE ================= -->
+<!-- ================= TAB 3 : GAUGE &amp; REFERENCES ================= -->
 <div class="tab-content" id="tab-2">
-  <div class="section-header"><span class="badge">1</span> GAUGE SELECTION TABLE — SMACNA Table 1-7 (Low Pressure Class)</div>
+  <div class="section-header"><span class="badge">1</span> TECHNICAL REFERENCE — ORGANIZED BY VERIFICATION TIER</div>
+  <div class="legend-box">Every figure this calculator relies on is classified into one of four tiers below, based on how it was actually sourced in this session — not all of them carry the same weight, and the tier tells you which is which. Outbound access to full SMACNA reference documents was blocked by this environment's network policy, so "Existing App/Workbook Reference" and "Secondary-Sourced Guidance" are <b>not</b> independently verified against a primary SMACNA document here.</div>
+
+  <div class="ref-tier-header tier-existing">🗂️ Existing App/Workbook Reference</div>
+  <div class="ref-tier-note">Inherited from the app's pre-existing source workbook — not independently re-verified against a primary SMACNA document in this session.</div>
+  <div class="subsection-header">Gauge Selection — Table 1-7 (Low Pressure Class)</div>
   <div class="legend-box">Gauge is selected by the <b>LONGER side</b> = MAX(Width, Depth). Boundaries below are extended through <b>ga 16</b> (&gt;3050 mm) — the source workbook's gauge table listed this row, but the takeoff sheet's column for it was missing; this version wires a "ga 16" column so oversized ducts are no longer left uncosted.</div>
   <table class="ref-table">
     <tr><th>Item</th><th>Range (mm)</th><th>Gauge</th><th>Designation</th><th>Thickness (mm)</th><th>Weight (kg/m²)</th><th>SMACNA Ref.</th></tr>
     <tbody id="gauge-ref-body"></tbody>
   </table>
-
-  <div class="section-header"><span class="badge">2</span> HANGER SPACING — SMACNA Table 4-1 (Low Pressure)</div>
+  <div class="subsection-header">Hanger Spacing — Table 4-1 (Low Pressure)</div>
   <table class="ref-table">
     <tr><th>Condition</th><th>Max Hanger Spacing</th><th>Rods per Trapeze Hanger</th></tr>
     <tr><td>Any side ≤ 2400 mm</td><td>2.4 m</td><td>2</td></tr>
     <tr><td>Any side &gt; 2400 mm</td><td>1.5 m</td><td>2</td></tr>
   </table>
   <div class="ok-box">The calculator uses 2.4 m spacing by default (assumption A-09, Tab 1). Reduce A-09 to 1.5 m in Tab 1 if any run has a side over 2400 mm.</div>
+  <div class="subsection-header">Assumption values in this tier</div>
+  <table class="ref-table"><tr><th>Ref.</th><th>Value</th><th>Description</th></tr><tbody id="ref-existing-body"></tbody></table>
+
+  <div class="ref-tier-header tier-secondary">🔎 Secondary-Sourced Guidance</div>
+  <div class="ref-tier-note">Aggregated from published secondary sources (contractor/reference sites, cross-checked across 2+ independently-authored pages), not the primary SMACNA manual — confirm exact values against your SMACNA 3rd Ed. before use.</div>
+  <table class="ref-table"><tr><th>Ref.</th><th>Value</th><th>Description</th><th>Guidance</th></tr><tbody id="ref-secondary-body"></tbody></table>
+
+  <div class="ref-tier-header tier-assumption">📐 Engineering/Estimating Assumption</div>
+  <div class="ref-tier-note">Project-adjustable estimating judgment, not code-mandated. Change these in Tab 1 to match your project specs, product TDS, or house rules.</div>
+  <table class="ref-table"><tr><th>Ref.</th><th>Value</th><th>Description</th><th>Range</th></tr><tbody id="ref-assumption-body"></tbody></table>
+
+  <div class="ref-tier-header tier-general">📖 General Material/Industry Reference</div>
+  <div class="ref-tier-note">Common physical/product constants and general trade terminology — not SMACNA-specific citations, and not expected to vary by project.</div>
+  <table class="ref-table"><tr><th>Ref.</th><th>Value</th><th>Description</th></tr><tbody id="ref-general-body"></tbody></table>
+  <div class="subsection-header">Construction terminology (general reference, not a numeric table)</div>
+  <div class="legend-box">
+    <b>Seams</b> — the longitudinal joint closing a duct section into a tube shape (e.g. Pittsburgh lock: a folded mechanical interlock along the seam).<br>
+    <b>Joints</b> — the transverse connection between duct sections (e.g. S-slip and drive-slip for low pressure; standing seam for heavier/higher-pressure duct).<br>
+    <b>Reinforcement</b> — stiffening added to large flat duct faces to control panel deflection (e.g. cross-breaking, angle-iron bracing) — required more as duct size/pressure class increases.<br>
+    <b>Connectors</b> — hardware joining duct sections or duct-to-equipment (slip connectors, companion angles/flanges).<br>
+    <b>Flanges</b> — bolted duct-to-duct or duct-to-equipment connections, typically at equipment tie-ins or where sections must be demountable.<br>
+    This is general descriptive orientation, not a substitute for the applicable SMACNA construction table — verify exact spacing/reinforcement requirements against your SMACNA 3rd Ed. manual.
+  </div>
 </div>
 
 <!-- ================= TAB 4 : FORMULA REFERENCE ================= -->
 <div class="tab-content" id="tab-3">
   <div class="section-header"><span class="badge">1</span> FORMULA REFERENCE &amp; ENGINEERING BASIS</div>
+  <div class="legend-box">Formulas below are written in manual engineering notation (not spreadsheet/programming syntax) so they can be checked by hand. Each includes variable definitions with units and a worked example.</div>
   <div id="formula-ref-list"></div>
 </div>
 
