@@ -29,15 +29,18 @@ body{
 /* ---------- Top bar ---------- */
 .top-bar{background:var(--navy); color:#EAF1F5; padding:16px 22px;
   border-bottom:3px solid var(--accent);}
-/* 3-column grid (logo | title | action) so the title stays visually centered
-   on the bar regardless of the logo's/button's own width — text-align:center
-   alone would drift off-center once the logo is added on the left. */
-.header-grid{display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:14px;}
-.header-logo-col{justify-self:start;}
+/* Logo sits immediately beside the title, and that [logo+title] pair is
+   centered as one unit on the bar — not the logo pinned to the far edge
+   with the title independently centered on the full bar width, which reads
+   as two disconnected elements with a large gap between them. The install
+   button is taken out of flow (absolute) so it doesn't skew the group's
+   centering calculation. */
+.header-grid{position:relative; display:flex; justify-content:center; align-items:center; gap:14px;}
+.header-logo-col{flex:0 0 auto;}
 .header-logo{width:48px; height:48px; border-radius:8px; display:block; object-fit:cover;
   box-shadow:0 0 0 1px rgba(255,255,255,.15);}
-.header-title-col{justify-self:center; text-align:center;}
-.header-action-col{justify-self:end;}
+.header-title-col{text-align:center;}
+.header-action-col{position:absolute; right:0; top:50%; transform:translateY(-50%);}
 .top-bar h1{margin:0; font-size:1.38rem; font-weight:700; letter-spacing:.2px;}
 .top-bar .sub{font-size:.78rem; color:#9FB3C4; margin-top:8px; line-height:1.4; text-align:center;}
 .top-bar .badge-pill{display:inline-block; background:var(--navy-2); border:1px solid var(--accent);
@@ -184,11 +187,12 @@ body.offline .offline-pill{display:inline-block;}
 /* ---------- Responsive / mobile ---------- */
 @media (max-width:720px){
   .proj-grid{grid-template-columns:1fr;}
-  /* Logo-beside-title is desktop/laptop only — hide it and collapse the grid
-     to a single centered column so the title can wrap without overflow. */
-  .header-grid{grid-template-columns:1fr; row-gap:10px;}
+  /* Logo-beside-title is desktop/laptop only — hide it and stack the title
+     above the (now static, full-width) install button so it can wrap
+     without overflow. */
+  .header-grid{flex-direction:column; gap:10px;}
   .header-logo-col{display:none;}
-  .header-title-col,.header-action-col{justify-self:stretch;}
+  .header-action-col{position:static; transform:none; width:100%;}
   .top-bar h1{font-size:1.05rem; overflow-wrap:break-word;}
   .top-bar .install-btn{display:block; width:100%; margin-top:0;}
   .splash-logo{width:84px; height:84px;}
