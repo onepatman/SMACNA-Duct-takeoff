@@ -21,6 +21,27 @@
     document.querySelectorAll(".tab-btn").forEach((el, idx) => el.classList.toggle("active", idx === i));
   };
 
+  // ---------------- Duct mode: Rectangular / Round ----------------
+  let ductMode = "rect";
+  window.showDuctMode = function (mode) {
+    ductMode = mode;
+    document.getElementById("rect-calc-section").style.display = mode === "rect" ? "" : "none";
+    document.getElementById("round-calc-section").style.display = mode === "round" ? "" : "none";
+    document.getElementById("mode-rect-btn").classList.toggle("active", mode === "rect");
+    document.getElementById("mode-round-btn").classList.toggle("active", mode === "round");
+    const title = document.getElementById("app-title");
+    if (title) {
+      title.innerHTML = (mode === "rect" ? "RECTANGULAR" : "ROUND") + ' DUCT MATERIAL TAKEOFF <span class="offline-pill">OFFLINE</span>';
+      updateOnlineStatus();
+    }
+  };
+
+  // ---------------- Pressure class ----------------
+  window.onPressureClassChange = function () {
+    const cls = document.getElementById("p-pressure-class").value;
+    document.getElementById("pressure-class-warning").style.display = cls === "Low" ? "none" : "block";
+  };
+
   // ---------------- Assumptions tab ----------------
   function escapeAttr(s) {
     return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;");
@@ -104,6 +125,24 @@
       .join("");
   }
 
+  function renderFormulaRefRound() {
+    const el = document.getElementById("formula-ref-round-list");
+    if (!el) return;
+    el.innerHTML = SMACNA_ROUND.formulaRef
+      .map(
+        (f) => `
+      <div class="formula-item">
+        <div class="fname">${f.name}</div>
+        <div class="formula-box" style="margin:4px 0">${f.formula}</div>
+        <div style="font-size:.78rem;color:#3C4B57"><b>Variables:</b> ${f.variables}</div>
+        <div style="font-size:.78rem;color:#1565C0;margin-top:3px"><b>Example:</b> ${f.example}</div>
+        <div style="font-size:.78rem;color:#3C4B57;margin-top:3px">${f.note}</div>
+        <div style="font-size:.68rem;color:#8FA3AF;margin-top:4px">${TIER_LABELS[f.source].badge}</div>
+      </div>`
+      )
+      .join("");
+  }
+
   // ---------------- Gauge reference tab ----------------
   function renderGaugeTable() {
     const body = document.getElementById("gauge-ref-body");
@@ -168,11 +207,15 @@
   }
 
   function resultsRowHtml(id, run) {
+    const gaugeOverrideOptions = ["Auto"].concat(SMACNA.gaugeInfo.map((g) => g.label));
     return `
     <tr class="data-row" id="res-${id}" data-id="${id}">
       <td class="computed" id="runref-${id}">${run}</td>
       <td class="computed" id="perim-${id}">—</td>
       <td class="computed" id="area-${id}">—</td>
+      <td><select id="gaugeover-${id}" title="Manual gauge override — for Medium/High/Custom pressure class runs, since Table 1-7 automation is verified only for Low Pressure">${gaugeOverrideOptions
+        .map((o) => `<option value="${o}">${o}</option>`)
+        .join("")}</select></td>
       <td class="computed" id="ga26-${id}">—</td><td class="computed" id="ga24-${id}">—</td>
       <td class="computed" id="ga22-${id}">—</td><td class="computed" id="ga20-${id}">—</td>
       <td class="computed" id="ga18-${id}">—</td><td class="computed" id="ga16-${id}">—</td>
@@ -198,6 +241,7 @@
     ["run", "type", "w", "d", "l"].forEach((p) => {
       document.getElementById(p + "-" + id).addEventListener("input", () => recalcRow(id));
     });
+    document.getElementById("gaugeover-" + id).addEventListener("change", () => recalcRow(id));
     recalcRow(id);
   };
 
@@ -230,7 +274,10 @@
     if (runNameEl && runRefEl) runRefEl.textContent = runNameEl.value;
     const inEl = document.getElementById("row-" + id);
     const resEl = document.getElementById("res-" + id);
-    const result = SMACNA.computeRow(w, d, l, assumptions);
+    const overrideEl = document.getElementById("gaugeover-" + id);
+    const overrideVal = overrideEl ? overrideEl.value : "Auto";
+    const gaugeOverride = overrideVal === "Auto" ? null : SMACNA.gaugeInfo.findIndex((g) => g.label === overrideVal);
+    const result = SMACNA.computeRow(w, d, l, assumptions, gaugeOverride != null && gaugeOverride >= 0 ? gaugeOverride : null);
     rowResults.set(id, result);
 
     const fields = ["perim", "area", "ins", "seal", "adh", "pin", "tape", "strap", "corner", "angle", "rod", "insert", "nuts", "wash", "weight"];
@@ -397,6 +444,218 @@
     `;
   }
 
+  // ---------------- Round duct rows (separate calc engine, separate DOM tree) ----------------
+  let roundRowCounter = 0;
+  const roundRowResults = new Map();
+
+  const ROUND_COL_DEFS = [
+    { field: "insulation", suf: "ins", label: "Insulation", unit: "sq m" },
+    { field: "sealant", suf: "seal", label: "Sealant", unit: "gal" },
+    { field: "adhesive", suf: "adh", label: "Adhesive", unit: "gal" },
+    { field: "pins", suf: "pin", label: "Duct Pins", unit: "pcs" },
+    { field: "angle", suf: "angle", label: "Angle (trapeze)", unit: "m" },
+    { field: "rod", suf: "rod", label: "Threaded Rod", unit: "m" },
+    { field: "insert", suf: "insert", label: "Concrete Inserts", unit: "pcs" },
+    { field: "nuts", suf: "nuts", label: "Nuts", unit: "pcs" },
+    { field: "washers", suf: "wash", label: "Washers", unit: "pcs" },
+    { field: "weight", suf: "weight", label: "Est. Sheet Metal Weight", unit: "kg" }
+  ];
+  const ROUND_DECIMAL_FIELDS = ["insulation", "sealant", "adhesive", "angle", "rod", "weight"];
+  const ROUND_CONTINGENCY_FIELDS = ["pins", "insert", "nuts", "washers"];
+
+  function roundInputRowHtml(id, run, diameter, length, qty, gauge, flanges) {
+    const gaugeOptions = SMACNA.gaugeInfo.map((g) => g.label);
+    return `
+    <tr class="data-row" id="round-row-${id}" data-id="${id}">
+      <td><input type="text" id="rrun-${id}" value="${run}"></td>
+      <td><input type="number" min="0" id="rdia-${id}" value="${diameter}"></td>
+      <td><input type="number" min="0" step="0.1" id="rlen-${id}" value="${length}"></td>
+      <td><input type="number" min="1" step="1" id="rqty-${id}" value="${qty}"></td>
+      <td><select id="rgauge-${id}">${gaugeOptions.map((g) => `<option value="${g}"${g === gauge ? " selected" : ""}>${g}</option>`).join("")}</select></td>
+      <td><input type="number" min="0" step="1" id="rflange-${id}" value="${flanges}"></td>
+      <td class="no-print"><button class="del-btn" onclick="removeRoundRow(${id})">✕</button></td>
+    </tr>`;
+  }
+
+  function roundResultsRowHtml(id, run) {
+    return `
+    <tr class="data-row" id="round-res-${id}" data-id="${id}">
+      <td class="computed" id="rrunref-${id}">${run}</td>
+      <td class="computed" id="rcirc-${id}">—</td>
+      <td class="computed" id="rarea-${id}">—</td>
+      <td class="computed" id="rins-${id}">—</td><td class="computed" id="rseal-${id}">—</td>
+      <td class="computed" id="radh-${id}">—</td><td class="computed" id="rpin-${id}">—</td>
+      <td class="computed" id="rangle-${id}">—</td><td class="computed" id="rrod-${id}">—</td>
+      <td class="computed" id="rinsert-${id}">—</td><td class="computed" id="rnuts-${id}">—</td><td class="computed" id="rwash-${id}">—</td>
+      <td class="computed" id="rweight-${id}">—</td>
+    </tr>`;
+  }
+
+  window.addRoundRow = function (run, diameter, length, qty, gauge, flanges) {
+    roundRowCounter++;
+    const id = roundRowCounter;
+    const runName = run || "RD-" + String(id).padStart(2, "0");
+    document.getElementById("round-input-body").insertAdjacentHTML(
+      "beforeend",
+      roundInputRowHtml(id, runName, diameter || "", length || "", qty || 1, gauge || "ga 22", flanges || 0)
+    );
+    document.getElementById("round-results-body").insertAdjacentHTML("beforeend", roundResultsRowHtml(id, runName));
+    ["rrun", "rdia", "rlen", "rqty", "rgauge", "rflange"].forEach((p) => {
+      const el = document.getElementById(p + "-" + id);
+      el.addEventListener(p === "rgauge" ? "change" : "input", () => recalcRoundRow(id));
+    });
+    recalcRoundRow(id);
+  };
+
+  window.removeRoundRow = function (id) {
+    const inEl = document.getElementById("round-row-" + id);
+    const resEl = document.getElementById("round-res-" + id);
+    if (inEl) inEl.remove();
+    if (resEl) resEl.remove();
+    roundRowResults.delete(id);
+    recalcRoundTotals();
+  };
+
+  window.clearAllRoundRows = function () {
+    document.getElementById("round-input-body").innerHTML = "";
+    document.getElementById("round-results-body").innerHTML = "";
+    roundRowResults.clear();
+    recalcRoundTotals();
+  };
+
+  function recalcAllRoundRows() {
+    document.querySelectorAll("#round-input-body tr.data-row").forEach((tr) => recalcRoundRow(parseInt(tr.dataset.id, 10)));
+  }
+
+  function recalcRoundRow(id) {
+    const dia = parseFloat(document.getElementById("rdia-" + id).value);
+    const len = parseFloat(document.getElementById("rlen-" + id).value);
+    const qty = parseFloat(document.getElementById("rqty-" + id).value);
+    const gauge = document.getElementById("rgauge-" + id).value;
+    const runNameEl = document.getElementById("rrun-" + id);
+    const runRefEl = document.getElementById("rrunref-" + id);
+    if (runNameEl && runRefEl) runRefEl.textContent = runNameEl.value;
+    const inEl = document.getElementById("round-row-" + id);
+    const resEl = document.getElementById("round-res-" + id);
+    const result = SMACNA_ROUND.computeRow(dia, len, qty, gauge, assumptions);
+    roundRowResults.set(id, result);
+
+    const fields = ["circ", "area", "ins", "seal", "adh", "pin", "angle", "rod", "insert", "nuts", "wash", "weight"];
+    if (!result) {
+      fields.forEach((f) => (document.getElementById("r" + f + "-" + id).textContent = "—"));
+      inEl.classList.add("incomplete");
+      if (resEl) resEl.classList.add("incomplete");
+      recalcRoundTotals();
+      return;
+    }
+    inEl.classList.remove("incomplete");
+    if (resEl) resEl.classList.remove("incomplete");
+
+    document.getElementById("rcirc-" + id).textContent = result.circumference.toFixed(2);
+    document.getElementById("rarea-" + id).textContent = result.area.toFixed(2);
+    document.getElementById("rins-" + id).textContent = result.insulation.toFixed(2);
+    document.getElementById("rseal-" + id).textContent = result.sealant.toFixed(2);
+    document.getElementById("radh-" + id).textContent = result.adhesive.toFixed(2);
+    document.getElementById("rpin-" + id).textContent = result.pins;
+    document.getElementById("rangle-" + id).textContent = result.angle.toFixed(2);
+    document.getElementById("rrod-" + id).textContent = result.rod.toFixed(2);
+    document.getElementById("rinsert-" + id).textContent = result.insert;
+    document.getElementById("rnuts-" + id).textContent = result.nuts;
+    document.getElementById("rwash-" + id).textContent = result.washers;
+    document.getElementById("rweight-" + id).textContent = result.weight.toFixed(1);
+
+    recalcRoundTotals();
+  }
+
+  function computeRoundGrandTotals() {
+    const results = Array.from(roundRowResults.values());
+    const totals = {};
+    ROUND_COL_DEFS.forEach(({ field }) => (totals[field] = SMACNA_ROUND.sumRows(results, field)));
+    return { totals, wasteFactor: assumptions.A15 };
+  }
+
+  function recalcRoundTotals() {
+    const { totals, wasteFactor } = computeRoundGrandTotals();
+    ROUND_COL_DEFS.forEach(({ field, suf }) => {
+      const t = totals[field];
+      const dec = ROUND_DECIMAL_FIELDS.includes(field);
+      const tEl = document.getElementById("rt-" + suf);
+      const wEl = document.getElementById("rw-" + suf);
+      const fEl = document.getElementById("rf-" + suf);
+      const fmt = (v) => (dec ? v.toFixed(2) : Math.round(v * 100) / 100);
+      if (tEl) tEl.textContent = fmt(t);
+      if (wEl) wEl.textContent = fmt(t * wasteFactor);
+      if (fEl) fEl.textContent = fmt(t * (1 + wasteFactor));
+    });
+    const wasteLabelEl = document.getElementById("round-waste-row-label");
+    if (wasteLabelEl) wasteLabelEl.textContent = `+ Waste/Contingency Allowance (A-15 = ${Math.round(wasteFactor * 100)}%) →`;
+
+    const nIncomplete = document.querySelectorAll("#round-input-body tr.data-row.incomplete").length;
+    const incompleteWarning = document.getElementById("round-incomplete-warning");
+    if (incompleteWarning) incompleteWarning.style.display = nIncomplete > 0 ? "block" : "none";
+
+    renderRoundSummary(totals, wasteFactor);
+  }
+
+  function renderRoundSummary(totals, wasteFactor) {
+    const body = document.getElementById("round-summary-body");
+    if (!body) return;
+    const lineBox = (field) => {
+      const def = ROUND_COL_DEFS.find((c) => c.field === field);
+      const net = totals[field];
+      const isContingency = ROUND_CONTINGENCY_FIELDS.includes(field);
+      const waste = net * wasteFactor;
+      const fin = net + waste;
+      const dec = ROUND_DECIMAL_FIELDS.includes(field);
+      const f = (v) => (dec ? v.toFixed(2) : Math.round(v));
+      return `<div class="summary-primary-box">
+        <div class="sp-label">${def.label}</div>
+        <div class="sp-value">${f(fin)} ${def.unit}</div>
+        <div class="sp-audit">Net ${f(net)} + ${isContingency ? "Contingency" : "Waste"} ${f(waste)}</div>
+      </div>`;
+    };
+    const miscFields = ["insulation", "sealant", "adhesive", "pins"];
+    const hangerFields = ["angle", "rod", "insert", "nuts", "washers"];
+    const nRows = document.querySelectorAll("#round-input-body tr.data-row:not(.incomplete)").length;
+    const nFittings = document.querySelectorAll("#fittings-body tr").length;
+
+    body.innerHTML = `
+      <div class="subsection-header">Straight Duct — Miscellaneous &amp; Consumables</div>
+      <div class="summary-grid">${miscFields.map(lineBox).join("")}</div>
+
+      <div class="subsection-header">Straight Duct — Hangers &amp; Supports</div>
+      <div class="warning-box">⚠ Rod diameter (A-13: ${assumptions.A13}) and trapeze angle size (A-14: ${assumptions.A14}) are manually selected estimating assumptions — <b>NOT</b> automatically SMACNA-compliant sizing. Final support sizing must be verified by the project engineer against the applicable SMACNA edition before fabrication or installation.</div>
+      <div class="summary-grid">${hangerFields.map(lineBox).join("")}</div>
+
+      <div class="subsection-header">Fittings &amp; Accessories (manual quantities — not included in the totals above)</div>
+      <div class="ok-box">${nFittings} fitting line item(s) entered in the schedule above. These are ordering quantities only — no area/weight is calculated for fittings.</div>
+
+      <div class="ok-box">${nRows} round duct run(s) computed successfully. Final Takeoff totals (Net + Waste/Contingency Allowance, A-15) update live as you edit any cell above.</div>
+    `;
+  }
+
+  // ---------------- Fittings & Accessories schedule (manual, no calculation) ----------------
+  let fittingRowCounter = 0;
+  window.addFittingRow = function () {
+    fittingRowCounter++;
+    const id = fittingRowCounter;
+    document.getElementById("fittings-body").insertAdjacentHTML(
+      "beforeend",
+      `<tr id="fitting-row-${id}">
+        <td><select id="fittype-${id}">${SMACNA_ROUND.fittingTypes.map((t) => `<option value="${t}">${t}</option>`).join("")}</select></td>
+        <td><input type="number" min="0" id="fitsize-${id}" placeholder="mm"></td>
+        <td><input type="number" min="0" step="1" id="fitqty-${id}" value="1"></td>
+        <td class="no-print"><button class="del-btn" onclick="removeFittingRow(${id})">✕</button></td>
+      </tr>`
+    );
+    document.getElementById("fitqty-" + id).addEventListener("input", () => recalcRoundTotals());
+  };
+  window.removeFittingRow = function (id) {
+    const el = document.getElementById("fitting-row-" + id);
+    if (el) el.remove();
+    recalcRoundTotals();
+  };
+
   // ---------------- Print report (professional PDF, not a screenshot of the app) ----------------
   function pv(id) {
     const el = document.getElementById(id);
@@ -409,26 +668,39 @@
     return `${v} ${a.unit}`;
   }
 
-  function renderPrintReport() {
-    const container = document.getElementById("print-report");
-    if (!container) return;
+  function assumptionsByTierHtml() {
+    const tiers = ["existing", "secondary", "assumption", "general"];
+    return tiers
+      .map((t) => {
+        const rows = SMACNA.assumptionsMeta.filter((a) => a.tier === t);
+        if (!rows.length) return "";
+        return `<div class="report-tier-block">
+          <div class="report-tier-badge">${TIER_LABELS[t].badge}</div>
+          <div class="report-tier-note">${TIER_LABELS[t].note}</div>
+          <table class="report-table"><thead><tr><th>Ref.</th><th>Value</th><th>Description</th><th>Source</th></tr></thead>
+          <tbody>${rows.map((a) => `<tr><td>${a.ref}</td><td>${fmtAssumpValue(a)}</td><td style="text-align:left">${a.label}</td><td style="text-align:left;font-size:8.5px">${a.source}</td></tr>`).join("")}</tbody>
+          </table></div>`;
+      })
+      .join("");
+  }
+
+  function buildRectReportSections() {
     const { totals, wasteFactor } = computeGrandTotals();
     const sheetArea = (assumptions.A12.w / 1000) * (assumptions.A12.h / 1000);
 
-    // ---- Duct Identification & Results (one combined table for the report) ----
     const rowsHtml = Array.from(document.querySelectorAll("#input-body tr.data-row"))
       .map((tr) => {
         const id = tr.dataset.id;
         const r = rowResults.get(parseInt(id, 10));
         const run = pv("run-" + id), type = pv("type-" + id);
         if (!r) return `<tr><td>${run}</td><td>${type}</td><td colspan="6" style="color:#9A2323">Incomplete — missing Width/Depth/Length</td></tr>`;
-        const gauge = SMACNA.gaugeInfo[r.gaugeIndex].label;
+        const overrideEl = document.getElementById("gaugeover-" + id);
+        const gauge = overrideEl && overrideEl.value !== "Auto" ? overrideEl.value + " (manual override)" : SMACNA.gaugeInfo[r.gaugeIndex].label;
         return `<tr><td>${run}</td><td>${type}</td><td>${pv("w-" + id)}</td><td>${pv("d-" + id)}</td><td>${pv("l-" + id)}</td>
           <td>${r.perimeter.toFixed(2)}</td><td>${r.area.toFixed(2)}</td><td>${gauge}</td></tr>`;
       })
       .join("");
 
-    // ---- Gauge Summary (Final Takeoff Area primary, Net/Waste as audit detail) ----
     const gaugeRowsHtml = SMACNA.gaFields
       .map((g, i) => ({ g, label: SMACNA.gaugeInfo[i].label, net: totals[g] }))
       .filter((x) => x.net > 0)
@@ -445,7 +717,6 @@
       })
       .join("");
 
-    // ---- Misc & Consumables / Hangers & Supports (Final primary, Net+delta audit) ----
     const miscFields = ["insulation", "sealant", "adhesive", "pins", "tape", "strap", "corner"];
     const hangerFields = ["angle", "rod", "insert", "nuts", "washers"];
     const lineHtml = (field) => {
@@ -463,41 +734,14 @@
       </tr>`;
     };
 
-    // ---- Assumptions, grouped by tier ----
-    const tiers = ["existing", "secondary", "assumption", "general"];
-    const assumptionsByTier = tiers
-      .map((t) => {
-        const rows = SMACNA.assumptionsMeta.filter((a) => a.tier === t);
-        if (!rows.length) return "";
-        return `<div class="report-tier-block">
-          <div class="report-tier-badge">${TIER_LABELS[t].badge}</div>
-          <div class="report-tier-note">${TIER_LABELS[t].note}</div>
-          <table class="report-table"><thead><tr><th>Ref.</th><th>Value</th><th>Description</th><th>Source</th></tr></thead>
-          <tbody>${rows.map((a) => `<tr><td>${a.ref}</td><td>${fmtAssumpValue(a)}</td><td style="text-align:left">${a.label}</td><td style="text-align:left;font-size:8.5px">${a.source}</td></tr>`).join("")}</tbody>
-          </table></div>`;
-      })
-      .join("");
-
-    container.innerHTML = `
-      <div class="report-header">
-        <h1>SMACNA Rectangular Duct Material Takeoff — Report</h1>
-        <div class="report-sub">Reference Basis: SMACNA HVAC Duct Construction Standards, 3rd Ed. | Generated ${new Date().toLocaleDateString()}</div>
-        <table class="report-projgrid">
-          <tr><td><b>Project:</b> ${pv("p-project")}</td><td><b>Date:</b> ${pv("p-date")}</td></tr>
-          <tr><td><b>Reference:</b> ${pv("p-ref")}</td><td><b>Prepared By:</b> ${pv("p-prep")}</td></tr>
-          <tr><td><b>Location:</b> ${pv("p-loc")}</td><td><b>Checked By:</b> ${pv("p-check")}</td></tr>
-          <tr><td><b>Revision:</b> ${pv("p-rev")}</td><td><b>Sheet:</b> ${pv("p-sheet")}</td></tr>
-        </table>
-      </div>
-
+    return `
       <div class="report-section">
-        <div class="report-section-title">1. Duct Identification &amp; Results</div>
+        <div class="report-section-title">1. Duct Identification &amp; Results (Rectangular)</div>
         <table class="report-table">
           <thead><tr><th>Run</th><th>Type</th><th>Width mm</th><th>Depth mm</th><th>Length m</th><th>Perimeter m</th><th>Area sq m</th><th>Gauge</th></tr></thead>
           <tbody>${rowsHtml || '<tr><td colspan="8">No duct runs entered.</td></tr>'}</tbody>
         </table>
       </div>
-
       <div class="report-section">
         <div class="report-section-title">2. Calculation Summary — Gauge Summary</div>
         <div class="report-note">Final Takeoff Area and Est. No. of Sheets are the primary procurement figures (post Waste/Contingency Allowance, A-15). Net and the allowance amount are shown as audit detail. Sheet count uses the A-12 sheet size assumption (${assumptions.A12.w} × ${assumptions.A12.h} mm).</div>
@@ -506,27 +750,130 @@
           <tbody>${gaugeRowsHtml || '<tr><td colspan="4">No gauge totals — enter duct runs first.</td></tr>'}</tbody>
         </table>
       </div>
-
       <div class="report-section">
         <div class="report-section-title">3. Miscellaneous &amp; Consumables</div>
-        <table class="report-table">
-          <thead><tr><th>Item</th><th>Final (incl. allowance)</th><th>Audit detail</th></tr></thead>
-          <tbody>${miscFields.map(lineHtml).join("")}</tbody>
-        </table>
+        <table class="report-table"><thead><tr><th>Item</th><th>Final (incl. allowance)</th><th>Audit detail</th></tr></thead>
+        <tbody>${miscFields.map(lineHtml).join("")}</tbody></table>
       </div>
-
       <div class="report-section">
         <div class="report-section-title">4. Hangers &amp; Supports</div>
         <div class="report-disclaimer">⚠ Rod diameter (A-13: ${assumptions.A13}) and trapeze angle size (A-14: ${assumptions.A14}) are manually selected estimating assumptions — NOT automatically SMACNA-compliant sizing. Final support sizing must be verified by the project engineer against the applicable SMACNA edition before fabrication or installation.</div>
+        <table class="report-table"><thead><tr><th>Item</th><th>Final (incl. allowance)</th><th>Audit detail</th></tr></thead>
+        <tbody>${hangerFields.map(lineHtml).join("")}</tbody></table>
+      </div>`;
+  }
+
+  function buildRoundReportSections() {
+    const { totals, wasteFactor } = computeRoundGrandTotals();
+
+    const rowsHtml = Array.from(document.querySelectorAll("#round-input-body tr.data-row"))
+      .map((tr) => {
+        const id = tr.dataset.id;
+        const r = roundRowResults.get(parseInt(id, 10));
+        const run = pv("rrun-" + id);
+        if (!r) return `<tr><td>${run}</td><td colspan="5" style="color:#9A2323">Incomplete — missing Diameter/Length/Quantity</td></tr>`;
+        return `<tr><td>${run}</td><td>${pv("rdia-" + id)}</td><td>${pv("rlen-" + id)}</td><td>${pv("rqty-" + id)}</td>
+          <td>${r.circumference.toFixed(2)}</td><td>${r.area.toFixed(2)}</td><td>${r.gaugeLabel} (manual)</td></tr>`;
+      })
+      .join("");
+
+    // Gauge grouping: round duct gauge is per-row manual, so group by whatever labels are actually in use.
+    const byGauge = {};
+    roundRowResults.forEach((r) => {
+      if (!r) return;
+      byGauge[r.gaugeLabel] = (byGauge[r.gaugeLabel] || 0) + r.area;
+    });
+    const gaugeRowsHtml = Object.keys(byGauge)
+      .map((label) => {
+        const net = byGauge[label];
+        const waste = net * wasteFactor;
+        const fin = net + waste;
+        return `<tr><td>${label}</td><td class="report-primary">${fin.toFixed(2)} sq m</td>
+          <td class="report-audit">Net ${net.toFixed(2)} + Waste/Contingency ${waste.toFixed(2)}</td></tr>`;
+      })
+      .join("");
+
+    const miscFields = ["insulation", "sealant", "adhesive", "pins"];
+    const hangerFields = ["angle", "rod", "insert", "nuts", "washers"];
+    const lineHtml = (field) => {
+      const def = ROUND_COL_DEFS.find((c) => c.field === field);
+      const net = totals[field];
+      const isContingency = ROUND_CONTINGENCY_FIELDS.includes(field);
+      const waste = net * wasteFactor;
+      const fin = net + waste;
+      const dec = ROUND_DECIMAL_FIELDS.includes(field);
+      const f = (v) => (dec ? v.toFixed(2) : Math.round(v));
+      return `<tr><td>${def.label}</td><td class="report-primary">${f(fin)} ${def.unit}</td>
+        <td class="report-audit">Net ${f(net)} + ${isContingency ? "Contingency" : "Waste"} ${f(waste)}</td></tr>`;
+    };
+
+    const fittingsHtml = Array.from(document.querySelectorAll("#fittings-body tr"))
+      .map((tr) => {
+        const id = tr.id.replace("fitting-row-", "");
+        return `<tr><td>${pv("fittype-" + id)}</td><td>${pv("fitsize-" + id)}</td><td>${pv("fitqty-" + id)}</td></tr>`;
+      })
+      .join("");
+
+    return `
+      <div class="report-section">
+        <div class="report-section-title">1① AUTOMATIC — Round Duct Identification &amp; Results</div>
         <table class="report-table">
-          <thead><tr><th>Item</th><th>Final (incl. allowance)</th><th>Audit detail</th></tr></thead>
-          <tbody>${hangerFields.map(lineHtml).join("")}</tbody>
+          <thead><tr><th>Run</th><th>Diameter mm</th><th>Length m</th><th>Qty</th><th>Circumference m</th><th>Area sq m</th><th>Gauge</th></tr></thead>
+          <tbody>${rowsHtml || '<tr><td colspan="7">No round duct runs entered.</td></tr>'}</tbody>
+        </table>
+      </div>
+      <div class="report-section">
+        <div class="report-section-title">2. Calculation Summary — By Selected Gauge</div>
+        <div class="report-note">Round duct gauge is manually selected per run (not auto-looked-up) — grouped here by whichever gauge labels are actually in use.</div>
+        <table class="report-table">
+          <thead><tr><th>Gauge</th><th>Final Takeoff Area</th><th>Audit detail</th></tr></thead>
+          <tbody>${gaugeRowsHtml || '<tr><td colspan="3">No gauge totals — enter round duct runs first.</td></tr>'}</tbody>
+        </table>
+      </div>
+      <div class="report-section">
+        <div class="report-section-title">3. Miscellaneous &amp; Consumables</div>
+        <table class="report-table"><thead><tr><th>Item</th><th>Final (incl. allowance)</th><th>Audit detail</th></tr></thead>
+        <tbody>${miscFields.map(lineHtml).join("")}</tbody></table>
+      </div>
+      <div class="report-section">
+        <div class="report-section-title">4. Hangers &amp; Supports</div>
+        <div class="report-disclaimer">⚠ Rod diameter (A-13: ${assumptions.A13}) and trapeze angle size (A-14: ${assumptions.A14}) are manually selected estimating assumptions — NOT automatically SMACNA-compliant sizing. Final support sizing must be verified by the project engineer against the applicable SMACNA edition before fabrication or installation.</div>
+        <table class="report-table"><thead><tr><th>Item</th><th>Final (incl. allowance)</th><th>Audit detail</th></tr></thead>
+        <tbody>${hangerFields.map(lineHtml).join("")}</tbody></table>
+      </div>
+      <div class="report-section">
+        <div class="report-section-title">1② MANUAL — Fittings &amp; Accessories Schedule</div>
+        <div class="report-disclaimer">⚠ Fitting quantities are entered manually for material ordering only. Surface area, weight, and gauge per fitting are NOT calculated — no verified SMACNA fitting-dimension source was available in this session. Treat these as ordering quantities only.</div>
+        <table class="report-table"><thead><tr><th>Fitting Type</th><th>Size/Diameter mm</th><th>Quantity</th></tr></thead>
+        <tbody>${fittingsHtml || '<tr><td colspan="3">No fittings entered.</td></tr>'}</tbody></table>
+      </div>`;
+  }
+
+  function renderPrintReport() {
+    const container = document.getElementById("print-report");
+    if (!container) return;
+    const modeLabel = ductMode === "rect" ? "Rectangular" : "Round";
+    const pressureClass = pv("p-pressure-class") || "Low";
+    const designPressure = pv("p-design-pressure");
+
+    container.innerHTML = `
+      <div class="report-header">
+        <h1>SMACNA ${modeLabel} Duct Material Takeoff — Report</h1>
+        <div class="report-sub">Reference Basis: SMACNA HVAC Duct Construction Standards, 3rd Ed. | Generated ${new Date().toLocaleDateString()}</div>
+        <table class="report-projgrid">
+          <tr><td><b>Project:</b> ${pv("p-project")}</td><td><b>Date:</b> ${pv("p-date")}</td></tr>
+          <tr><td><b>Reference:</b> ${pv("p-ref")}</td><td><b>Prepared By:</b> ${pv("p-prep")}</td></tr>
+          <tr><td><b>Location:</b> ${pv("p-loc")}</td><td><b>Checked By:</b> ${pv("p-check")}</td></tr>
+          <tr><td><b>Revision:</b> ${pv("p-rev")}</td><td><b>Sheet:</b> ${pv("p-sheet")}</td></tr>
+          <tr><td><b>Pressure Class (terminology):</b> ${pressureClass}${pressureClass !== "Low" ? " — classification label only, not backed by a verified gauge/reinforcement table in this app" : ""}</td><td><b>Design Static Pressure:</b> ${designPressure ? designPressure + " in.w.g." : "—"}</td></tr>
         </table>
       </div>
 
+      ${ductMode === "rect" ? buildRectReportSections() : buildRoundReportSections()}
+
       <div class="report-section">
         <div class="report-section-title">5. Material Coverage Assumptions &amp; References</div>
-        ${assumptionsByTier}
+        ${assumptionsByTierHtml()}
       </div>
 
       <div class="report-section">
@@ -571,6 +918,7 @@
     // ---- Init: same sample rows as the source workbook ----
     renderAssumptions();
     renderFormulaRef();
+    renderFormulaRefRound();
     renderGaugeTable();
     renderReferenceTiers();
     window.addRow("SA-01", "SA", 400, 300, 10);
@@ -578,5 +926,7 @@
     window.addRow("SA-03", "SA", 900, 600, 12);
     window.addRow("SA-04", "SA", 1200, 800, 6);
     window.addRow("SA-05", "RA", 280, 200, 15);
+    window.addRoundRow("RD-01", 300, 5, 1, "ga 22", 0);
+    window.addRoundRow("RD-02", 450, 8, 2, "ga 20", 1);
   });
 })();
