@@ -17,20 +17,39 @@ const SMACNA = (function () {
     { label: "ga 16", min: 3051, max: 999999, thickness: 1.60, weight: 12.60, ref: "SMACNA T1-7" }
   ];
 
-  // ---- Material coverage assumptions (A-01 ... A-11) ----
+  // ---- Material coverage assumptions (A-01 ... A-15) ----
+  // tier: which of the four Gauge & References categories this belongs to.
+  // "existing" = carried over from the app's pre-existing source workbook,
+  //   not independently re-verified against a primary SMACNA document here.
+  // "assumption" = engineering/estimating judgment, project-adjustable.
+  // "secondary" = aggregated from published secondary sources (see the
+  //   "Sources consulted" list this session used), not the primary manual.
   const assumptionsMeta = [
-    { ref: "A-01", field: "A01", unit: "sq m / gal",   label: "Sealant coverage (duct mastic, SMACNA Class A sealing)", def: 35,    source: "SMACNA HVAC Duct Const. 3rd Ed., Ch. 5", locked: true },
-    { ref: "A-02", field: "A02", unit: "sq m / gal",   label: "Insulation adhesive coverage",                            def: 25,    source: "Manufacturer typical — verify product TDS", locked: false },
-    { ref: "A-03", field: "A03", unit: "pcs / sq m",   label: "Duct pin density (external insulation attachment)",       def: 4,     source: "Philippine MEPF contractor standard practice", locked: false },
-    { ref: "A-04", field: "A04", unit: "m",            label: "Duct section joint spacing (for duct tape calc.)",        def: 1.2,   source: "SMACNA standard duct section length (low pressure)", locked: true },
-    { ref: "A-05", field: "A05", unit: "m / roll",     label: "Duct tape roll length (20 yards per roll)",               def: 18.29, source: "Standard roll = 20 yd = 18.29 m (aluminum foil tape)", locked: true },
-    { ref: "A-06", field: "A06", unit: "m",            label: "Strap spacing along duct length (insulation banding)",    def: 1.5,   source: "Philippine MEPF contractor standard practice", locked: false },
-    { ref: "A-07", field: "A07", unit: "m / roll",     label: "Strap roll length (20 yards per roll)",                   def: 18.29, source: "Standard roll = 20 yd = 18.29 m (metal banding strap)", locked: true },
-    { ref: "A-08", field: "A08", unit: "factor (–)",   label: "Corner area factor (% of total duct area)",              def: 0.1,   source: "Engineering estimate — corner bead / angle trim", locked: false },
-    { ref: "A-09", field: "A09", unit: "m",            label: "Hanger spacing — max for rectangular duct (low press.)", def: 2.4,   source: "SMACNA Table 4-1 Low Pressure, ≤ 2400 mm side", locked: true },
-    { ref: "A-10", field: "A10", unit: "m",            label: "Threaded rod length per rod (ceiling drop / slab clearance)", def: 0.6, source: "Project-specific — adjust per actual ceiling height", locked: false },
-    { ref: "A-11", field: "A11", unit: "pcs / hanger", label: "Number of threaded rods per hanger (trapeze type)",      def: 2,     source: "SMACNA Table 4-1 — Standard trapeze hanger", locked: true }
+    { ref: "A-01", field: "A01", unit: "sq m / gal",   label: "Sealant coverage (duct mastic, SMACNA Class A sealing)", def: 35,    source: "Existing app reference — inherited from original source workbook, not independently re-verified", locked: true, tier: "existing" },
+    { ref: "A-02", field: "A02", unit: "sq m / gal",   label: "Insulation adhesive coverage",                            def: 25,    min: 20, max: 30, typical: 25, guidance: "Use actual manufacturer/product TDS where available.", source: "Estimating assumption — manufacturer typical", locked: false, tier: "assumption" },
+    { ref: "A-03", field: "A03", unit: "pcs / sq m",   label: "Duct pin density (external insulation attachment)",       def: 4,     min: 3, max: 5, typical: 4, guidance: "Varies with insulation thickness and pin manufacturer spacing recommendation.", source: "Estimating assumption — Philippine MEPF contractor practice", locked: false, tier: "assumption" },
+    { ref: "A-04", field: "A04", unit: "m",            label: "Duct section joint spacing (for duct tape calc.)",        def: 1.2,   source: "Existing app reference — inherited from original source workbook, not independently re-verified", locked: true, tier: "existing" },
+    { ref: "A-05", field: "A05", unit: "m / roll",     label: "Duct tape roll length (20 yards per roll)",               def: 18.29, source: "General reference — standard roll = 20 yd = 18.29 m (aluminum foil tape)", locked: true, tier: "general" },
+    { ref: "A-06", field: "A06", unit: "m",            label: "Strap spacing along duct length (insulation banding)",    def: 1.5,   min: 1.0, max: 1.8, typical: 1.5, guidance: "Tighter spacing for larger/heavier duct sections.", source: "Estimating assumption — Philippine MEPF contractor practice", locked: false, tier: "assumption" },
+    { ref: "A-07", field: "A07", unit: "m / roll",     label: "Strap roll length (20 yards per roll)",                   def: 18.29, source: "General reference — standard roll = 20 yd = 18.29 m (metal banding strap)", locked: true, tier: "general" },
+    { ref: "A-08", field: "A08", unit: "factor (–)",   label: "Corner area factor (% of total duct area)",              def: 0.1,   min: 0.05, max: 0.15, typical: 0.1, guidance: "Higher for duct runs with many corners/transitions relative to length.", source: "Estimating assumption — corner bead / angle trim", locked: false, tier: "assumption" },
+    { ref: "A-09", field: "A09", unit: "m",            label: "Hanger spacing — max for rectangular duct (low press.)", def: 2.4,   source: "Existing app reference — inherited from original source workbook, not independently re-verified", locked: true, tier: "existing" },
+    { ref: "A-10", field: "A10", unit: "m",            label: "Threaded rod length per rod (ceiling drop / slab clearance)", def: 0.6, min: 0.3, max: 3.0, typical: 0.6, guidance: "Measure from as-built ceiling/slab clearance — no universal value applies.", source: "Estimating assumption — project-specific", locked: false, tier: "assumption" },
+    { ref: "A-11", field: "A11", unit: "pcs / hanger", label: "Number of threaded rods per hanger (trapeze type)",      def: 2,     source: "Existing app reference — inherited from original source workbook, not independently re-verified", locked: true, tier: "existing" },
+    { ref: "A-12", field: "A12", unit: "mm × mm",      label: "Sheet size (for Est. No. of Sheets in Summary)",          def: { w: 1219, h: 2438 }, type: "dual", source: "Estimating assumption — confirm actual supplier sheet size", locked: false, tier: "assumption" },
+    { ref: "A-13", field: "A13", unit: "rod diameter", label: "Hanger rod diameter",                                     def: "3/8\" (9.5 mm)", type: "select", options: ["3/8\" (9.5 mm)", "1/2\" (12.7 mm)", "5/8\" (16 mm)"],
+      guidance: "Rule of thumb from published secondary references (not the primary SMACNA manual, which I could not access in this session): 3/8\" rod typically sufficient up to ~1219mm duct half-perimeter, 1/2\" beyond. Confirm against your SMACNA 3rd Ed. manual before fabrication.",
+      source: "Secondary-sourced guidance — verify against SMACNA manual", locked: false, tier: "secondary" },
+    { ref: "A-14", field: "A14", unit: "angle size",   label: "Trapeze angle size",                                      def: "1\"×1\"×1/8\"", type: "select", options: ["1\"×1\"×1/8\"", "1-1/2\"×1-1/2\"×1/8\"", "2\"×2\"×3/16\""],
+      guidance: "Rule of thumb from published secondary references: angle size scales with duct size/pressure class, commonly 1\"×1\"×1/8\" up to 2\"×2\"×3/16\" for larger/higher-pressure duct. Confirm against your SMACNA 3rd Ed. manual before fabrication.",
+      source: "Secondary-sourced guidance — verify against SMACNA manual", locked: false, tier: "secondary" },
+    { ref: "A-15", field: "A15", unit: "factor (–)",   label: "Waste / contingency factor (applied to all takeoff quantities)", def: 0.20, min: 0.10, max: 0.30, typical: 0.20, guidance: "20% is a common estimating default; adjust per project procurement/cutting-waste history.", source: "Estimating assumption — project contingency/waste allowance", locked: false, tier: "assumption" }
   ];
+
+  // Columns where the A-15 allowance means "spare pieces for damaged/lost
+  // hardware" (contingency) rather than "material lost to cutting" (waste) —
+  // same factor, different physical justification. Used only for UI labeling.
+  const contingencyFields = ["pins", "insert", "nuts", "washers"];
 
   // ---- Human-readable formula reference (drives the "Formula Reference" tab) ----
   const formulaRef = [
@@ -58,7 +77,7 @@ const SMACNA = (function () {
 
   function defaultAssumptions() {
     const a = {};
-    assumptionsMeta.forEach((m) => (a[m.field] = m.def));
+    assumptionsMeta.forEach((m) => (a[m.field] = m.type === "dual" ? { ...m.def } : m.def));
     return a;
   }
 
@@ -123,7 +142,7 @@ const SMACNA = (function () {
   }
 
   return {
-    gaugeInfo, assumptionsMeta, formulaRef, decimalCols, gaFields,
+    gaugeInfo, assumptionsMeta, formulaRef, decimalCols, gaFields, contingencyFields,
     defaultAssumptions, gaugeIndex, computeRow, sumRows, sumGauge
   };
 })();
