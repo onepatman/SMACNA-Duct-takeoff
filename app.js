@@ -77,11 +77,11 @@
         const rowClass = a.locked ? "locked-row" : a.tier === "secondary" ? "secondary-row" : "";
         return `
       <tr class="${rowClass}">
-        <td>${a.ref}</td>
-        <td class="rate-cell">${rateCellHtml(a)}${rangeLine}</td>
-        <td>${a.unit}</td>
-        <td style="text-align:left">${a.label}${guidanceLine}</td>
-        <td style="text-align:left;font-size:.72rem;color:#555">${a.locked ? "🔒 " : ""}${a.source}</td>
+        <td data-label="Ref.">${a.ref}</td>
+        <td class="rate-cell" data-label="Rate Value">${rateCellHtml(a)}${rangeLine}</td>
+        <td data-label="Unit">${a.unit}</td>
+        <td data-label="Description" style="text-align:left">${a.label}${guidanceLine}</td>
+        <td data-label="Code / Source" style="text-align:left;font-size:.72rem;color:#555">${a.locked ? "🔒 " : ""}${a.source}</td>
       </tr>`;
       })
       .join("");

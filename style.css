@@ -199,6 +199,23 @@ body.offline .offline-pill{display:inline-block;}
   .splash-brand{font-size:1.1rem;}
   .tab-btn{padding:10px 12px; font-size:.76rem;}
   .btn{flex:1 1 auto;}
+
+  /* Material Coverage Assumptions: a 5-column technical table forced into a
+     narrow phone screen either compresses columns until text overlaps, or
+     requires sideways scrolling that hides/"cuts" the Description text.
+     Below 720px, drop the table grid entirely and stack each row into a
+     labeled card instead — every field gets the full screen width. */
+  #tab-0 .table-scroll{overflow-x:visible; border:none; margin-top:0;}
+  table.assump-table{min-width:0; width:100%; table-layout:auto;}
+  table.assump-table .assump-thead-row{display:none;}
+  table.assump-table tbody{display:block;}
+  table.assump-table tbody tr{display:block; margin-bottom:12px; border:1px solid var(--border); border-radius:6px; overflow:hidden;}
+  table.assump-table tbody td{display:block; width:100% !important; text-align:left !important; border:none; border-bottom:1px solid var(--border); padding:8px 10px;}
+  table.assump-table tbody td:last-child{border-bottom:none;}
+  table.assump-table tbody td::before{content:attr(data-label); display:block; font-size:.62rem; font-weight:700;
+    text-transform:uppercase; letter-spacing:.4px; color:#607D8B; margin-bottom:3px;}
+  table.assump-table td.rate-cell input,table.assump-table td.rate-cell select{width:auto; min-width:120px; max-width:220px; margin:0;}
+  table.assump-table td.rate-cell div{text-align:left !important;}
 }
 
 /* ---------- Print report ----------
