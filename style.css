@@ -235,6 +235,22 @@ table.input-table{min-width:0;}
 .btn-add{background:#2E7D32; color:#fff;}
 .btn-clear{background:var(--steel); color:#fff;}
 .btn-pdf{background:var(--navy); color:#fff;}
+.btn-save{background:var(--accent-deep); color:#fff; display:inline-flex; align-items:center; gap:7px; font-size:.84rem; padding:11px 22px;}
+.btn-save:disabled{opacity:.55; cursor:not-allowed; transform:none; box-shadow:0 1px 3px rgba(0,0,0,.15);}
+
+/* ---------- Save bar / toast ---------- */
+.save-bar{display:flex; align-items:center; gap:14px; margin:18px 0; padding-top:14px;
+  border-top:1px dashed var(--border); flex-wrap:wrap;}
+.save-status{font-size:.78rem; color:#607D8B; font-style:italic;}
+.save-status.save-status-fresh{color:#1B5E20; font-weight:600; font-style:normal;}
+
+#toast{position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(16px);
+  background:var(--navy); color:#fff; padding:12px 22px; border-radius:6px; font-size:.85rem;
+  font-weight:600; box-shadow:0 6px 20px rgba(0,0,0,.35); z-index:9998; opacity:0; pointer-events:none;
+  transition:opacity .22s ease, transform .22s ease; display:flex; align-items:center; gap:9px;
+  max-width:90vw; text-align:left;}
+#toast.toast-show{opacity:1; transform:translateX(-50%) translateY(0);}
+#toast .toast-icon{color:#66BB6A; font-size:1rem; flex-shrink:0;}
 
 .formula-item{margin:10px 0; padding:10px 12px; background:#fff; border:1px solid var(--border); border-radius:3px;}
 .formula-item .fname{font-weight:700; color:var(--accent-deep); margin-bottom:4px; font-size:.85rem;}
@@ -246,6 +262,11 @@ body.offline .offline-pill{display:inline-block;}
 /* ---------- Responsive / mobile ---------- */
 @media (max-width:720px){
   .proj-grid{grid-template-columns:1fr;}
+  .save-bar{flex-direction:column; align-items:stretch;}
+  .btn-save{width:100%; justify-content:center;}
+  .save-status{text-align:center;}
+  #toast{left:12px; right:12px; transform:translateY(16px); max-width:none;}
+  #toast.toast-show{transform:translateY(0);}
   /* Logo-beside-title is desktop/laptop only — hide it and stack the title
      above the (now static, full-width) install button so it can wrap
      without overflow. */
@@ -298,24 +319,43 @@ body.offline .offline-pill{display:inline-block;}
 }
 
 @media print{
-  body *{visibility:hidden;}
-  #print-report, #print-report *{visibility:visible;}
-  #print-report{display:block; position:absolute; top:0; left:0; width:100%;}
+  /* visibility:hidden (the previous approach) keeps hidden elements in
+     document flow — they still occupy layout space even though unpainted.
+     With the full interactive app (many tall tables) sitting hidden right
+     alongside the much shorter #print-report, that reserved-but-invisible
+     height was large enough to spill into an extra, entirely blank
+     trailing page. display:none actually removes elements from flow, so
+     only #print-report's own height determines the page count. */
+  body > *:not(#print-report){display:none !important;}
+  #print-report{display:block; width:100%;}
   body{background:#fff;}
 }
 
-.report-header{border-bottom:2px solid #0D1B2A; padding-bottom:8px; margin-bottom:12px;}
+.report-header{border-bottom:2px solid #0D1B2A; padding-bottom:6px; margin-bottom:9px;}
 .report-header h1{font-size:15px; margin:0 0 4px; color:#0D1B2A; text-align:center;}
-.report-sub{font-size:9px; color:#607D8B; margin-bottom:8px; text-align:center;}
+.report-sub{font-size:9px; color:#607D8B; margin-bottom:6px; text-align:center;}
 .report-projgrid{width:100%; font-size:10px; border-collapse:collapse;}
 .report-projgrid td{padding:2px 6px; border:none;}
 
-.report-section{margin:14px 0; break-inside:avoid;}
+/* break-inside:avoid is NOT a blanket default here on purpose — a report
+   this long has both short, always-fits-on-one-page sections (Gauge
+   Summary, Misc & Consumables, Hangers & Supports: a handful of rows each)
+   and genuinely large ones (Duct Identification with many runs, the
+   5-tier Material Coverage Assumptions reference). Forcing the LARGE ones
+   to also stay atomic was what pushed a whole section to the next page
+   the moment it didn't fully fit the remaining space, leaving most of the
+   previous page blank. Large sections instead rely on their own
+   finer-grained break points — .report-tier-block per tier, and
+   thead{display:table-header-group} on every table so a header repeats
+   if the table itself needs to split — while .report-section-compact
+   (applied only to the short, bounded sections) keeps those intact. */
+.report-section{margin:9px 0;}
+.report-section-compact{break-inside:avoid;}
 .report-section-title{font-size:11px; font-weight:700; color:#fff; background:#152A3E;
-  padding:5px 8px; margin-bottom:6px; break-after:avoid;}
-.report-note{font-size:9px; color:#3C4B57; margin-bottom:6px; font-style:italic;}
+  padding:4px 8px; margin-bottom:5px; break-after:avoid;}
+.report-note{font-size:9px; color:#3C4B57; margin-bottom:5px; font-style:italic;}
 .report-disclaimer{font-size:9.5px; color:#9A2323; background:#FDECEA; border:1px solid #C62828;
-  padding:6px 8px; margin-bottom:6px; break-inside:avoid;}
+  padding:5px 8px; margin-bottom:5px; break-inside:avoid;}
 
 table.report-table{width:100%; border-collapse:collapse; font-size:9.5px; margin-bottom:4px; table-layout:auto;}
 table.report-table thead{display:table-header-group;}
@@ -324,7 +364,7 @@ table.report-table td{padding:5px 7px; border:1px solid #CFD8DC; text-align:left
 table.report-table .report-primary{font-weight:700; font-size:10.5px; text-align:center;}
 table.report-table .report-audit{font-size:8.5px; color:#607D8B;}
 
-.report-tier-block{margin-bottom:10px; break-inside:avoid;}
+.report-tier-block{margin-bottom:7px; break-inside:avoid;}
 .report-tier-badge{font-weight:700; font-size:9.5px; margin-bottom:2px;}
 .report-tier-note{font-size:8.5px; color:#607D8B; font-style:italic; margin-bottom:4px;}
 
