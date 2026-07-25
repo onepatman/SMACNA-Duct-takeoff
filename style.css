@@ -139,12 +139,39 @@ input[type=text],input[type=number],select{
 .proj-field{margin-bottom:8px;}
 .proj-field input{text-align:left; padding:7px 8px;}
 
-/* ---------- Tables ---------- */
-table.assump-table,table.ref-table{width:100%; border-collapse:collapse; font-size:.8rem; margin-top:6px;}
-table.assump-table th,table.ref-table th{background:var(--graphite); color:#fff; padding:7px; font-size:.7rem;
-  text-transform:uppercase; letter-spacing:.3px;}
-table.assump-table td,table.ref-table td{border:1px solid var(--border); padding:6px 8px;}
+/* ==========================================================================
+   TABLE DESIGN SYSTEM
+   One shared set of rules for every table in the app: assump-table (Tab 1
+   Assumptions), ref-table (Tab 3 reference tables), takeoff (Tab 2 input/
+   results/fittings grids). Print/PDF tables (report-table, further below)
+   are intentionally a separate system — the print stylesheet has its own
+   density/pagination constraints and must not inherit these rules.
+
+   Shared conventions across all three:
+   - Headers: centered, graphite background, uppercase, wrap onto 2 lines
+     rather than truncating/squeezing.
+   - Short values (refs, gauges, units, counts, dimensions) center-aligned;
+     long text (descriptions, guidance, notes, source citations) left-
+     aligned via an explicit style/class so it never gets miscentered.
+   - Cells vertically centered, consistent padding, no text touching borders.
+   - Wide/many-column tables scroll horizontally inside .table-scroll rather
+     than compressing to unreadable size — narrower reference tables get a
+     modest min-width so they don't collapse below readability on mobile,
+     but stay scroll-free on desktop where they already fit.
+   ========================================================================== */
+.table-scroll{overflow-x:auto; border:1px solid var(--border); border-radius:5px; margin-top:8px;
+  box-shadow:0 1px 4px rgba(13,27,42,.06);}
+
+/* ---- Tab 1 Assumptions + Tab 3 Reference tables ---- */
+table.assump-table,table.ref-table{width:100%; border-collapse:collapse; font-size:.82rem; margin-top:6px;}
+table.assump-table th,table.ref-table th{background:var(--graphite); color:#fff; padding:10px 11px; font-size:.72rem;
+  text-transform:uppercase; letter-spacing:.3px; text-align:center; vertical-align:middle;
+  white-space:normal; line-height:1.3; word-break:break-word; overflow-wrap:break-word;}
+table.assump-table td,table.ref-table td{border:1px solid var(--border); padding:9px 11px; vertical-align:middle;}
+table.ref-table{min-width:560px;}
+table.ref-table td{text-align:center;}
 table.ref-table tr:nth-child(even) td{background:#FAFBFC;}
+table.ref-table tr:hover td{background:#EFF6FB;}
 
 /* Balanced column widths — auto-layout was starving Ref./Rate Value (causing
    "A-01" to wrap) while over-widening Description/Code-Source. Unit now
@@ -164,15 +191,28 @@ table.assump-table tr.locked-row td.rate-cell input{background:#ECEFF1; border-c
 table.assump-table tr.secondary-row td{background:#EDE7F6;}
 table.assump-table tr.secondary-row td.rate-cell select{background:#F3EFFB; border-color:#7E57C2;}
 
-.table-scroll{overflow-x:auto; border:1px solid var(--border); border-radius:5px; margin-top:8px;
-  box-shadow:0 1px 4px rgba(13,27,42,.06);}
-table.takeoff{border-collapse:collapse; font-size:.72rem; min-width:2100px;}
-table.takeoff th,table.takeoff td{border:1px solid var(--border); padding:4px 5px; text-align:center; white-space:nowrap;}
-table.takeoff th{color:#0D1B2A; font-size:.66rem; font-weight:700; background:#DCE4E9;}
+/* ---- Tab 2 input/results/fittings grids ----
+   Column widths are content-driven (table-layout:auto) rather than forced
+   uniform, per-column min-widths below just stop any single column
+   (especially selects) from being squeezed thinner than its content needs.
+   Short numeric results stay single-line (nowrap) — wrapping "14.00" across
+   two lines is worse than a slightly wider column: headers are the one
+   place multi-line wrap is wanted, since their labels are genuinely longer
+   than the data beneath them. */
+table.takeoff{border-collapse:collapse; font-size:.78rem; min-width:2300px;}
+table.takeoff th,table.takeoff td{border:1px solid var(--border); padding:7px 9px; text-align:center; vertical-align:middle;}
+table.takeoff td{white-space:nowrap;}
+table.takeoff th{color:#0D1B2A; font-size:.71rem; font-weight:700; background:#DCE4E9;
+  white-space:normal; line-height:1.3;}
 .grp-geo{background:#B7CFE0;} .grp-dim{background:#CFD8DC;} .grp-gauge{background:#9CC7DE;}
 .grp-ins{background:#B9D4B0;} .grp-hng{background:#D9B8C4;} .grp-wt{background:#E3C79A;} .grp-act{background:#C9CFD3;}
 .grp-geo,.grp-dim,.grp-gauge,.grp-ins,.grp-hng,.grp-wt,.grp-act{color:#132330 !important; font-weight:800 !important;}
-table.takeoff td input, table.takeoff td select{font-size:.72rem; padding:3px 2px; min-width:56px;}
+table.takeoff td input, table.takeoff td select{font-size:.76rem; padding:5px 4px; min-height:32px;}
+table.takeoff td input[type=text]{min-width:82px;}
+table.takeoff td input[type=number]{min-width:68px;}
+table.takeoff td select{min-width:104px;}
+#fittings-body select{min-width:180px;} /* fitting-type names run long, e.g. "Damper — Balancing" */
+.round-gauge-cell{min-width:150px;}
 td.computed{background:#fff; color:#333;}
 td.gauge-hit{background:var(--hit-bg); font-weight:600;}
 tr.totals-row td{background:#DCEBF9; font-weight:700;}
@@ -181,6 +221,10 @@ tr.final-row td{background:#DCEDC8; font-weight:800; border-top:2px solid var(--
 tr.data-row.incomplete td{background:var(--warn-bg);}
 tr.data-row.gauge-outrange td.gauge-hit,tr.data-row.gauge-outrange td.round-gauge-cell{background:#FFF3CD; color:#7A5B00; font-weight:700;}
 table.input-table{min-width:0;}
+/* Round Duct's results table has far fewer columns than Rectangular's
+   (14 vs 23) — inheriting the same 2300px min-width left it visibly
+   over-stretched with empty space per column, so it gets its own. */
+#round-calc-section table.results-table{min-width:1350px;}
 .del-btn{background:var(--warn-border); color:#fff; border:none; border-radius:3px; padding:5px 9px; cursor:pointer; font-size:.72rem;}
 
 .action-bar{margin:12px 0; display:flex; gap:8px; flex-wrap:wrap;}
@@ -275,9 +319,9 @@ body.offline .offline-pill{display:inline-block;}
 
 table.report-table{width:100%; border-collapse:collapse; font-size:9.5px; margin-bottom:4px; table-layout:auto;}
 table.report-table thead{display:table-header-group;}
-table.report-table th{background:#DCE4E9; color:#0D1B2A; padding:4px 6px; text-align:left; border:1px solid #B0BEC5;}
-table.report-table td{padding:4px 6px; border:1px solid #CFD8DC; text-align:left;}
-table.report-table .report-primary{font-weight:700; font-size:10.5px;}
+table.report-table th{background:#DCE4E9; color:#0D1B2A; padding:5px 7px; text-align:left; border:1px solid #B0BEC5; vertical-align:middle;}
+table.report-table td{padding:5px 7px; border:1px solid #CFD8DC; text-align:left; vertical-align:middle;}
+table.report-table .report-primary{font-weight:700; font-size:10.5px; text-align:center;}
 table.report-table .report-audit{font-size:8.5px; color:#607D8B;}
 
 .report-tier-block{margin-bottom:10px; break-inside:avoid;}
