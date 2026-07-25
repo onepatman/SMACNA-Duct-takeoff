@@ -918,7 +918,7 @@
           <tbody>${rowsHtml || '<tr><td colspan="8">No duct runs entered.</td></tr>'}</tbody>
         </table>
       </div>
-      <div class="report-section">
+      <div class="report-section report-section-compact">
         <div class="report-section-title">2. Calculation Summary — Gauge Summary</div>
         <div class="report-note">Final Takeoff Area and Est. No. of Sheets are the primary procurement figures (post Waste/Contingency Allowance, A-15). Net and the allowance amount are shown as audit detail. Sheet count uses the A-12 sheet size assumption (${assumptions.A12.w} × ${assumptions.A12.h} mm).</div>
         <table class="report-table">
@@ -926,12 +926,12 @@
           <tbody>${gaugeRowsHtml || '<tr><td colspan="4">No gauge totals — enter duct runs first.</td></tr>'}</tbody>
         </table>
       </div>
-      <div class="report-section">
+      <div class="report-section report-section-compact">
         <div class="report-section-title">3. Miscellaneous &amp; Consumables</div>
         <table class="report-table"><thead><tr><th>Item</th><th>Final (incl. allowance)</th><th>Audit detail</th></tr></thead>
         <tbody>${miscFields.map(lineHtml).join("")}</tbody></table>
       </div>
-      <div class="report-section">
+      <div class="report-section report-section-compact">
         <div class="report-section-title">4. Hangers &amp; Supports</div>
         <div class="report-disclaimer">⚠ Rod diameter (A-13: ${assumptions.A13}) and trapeze angle size (A-14: ${assumptions.A14}) are sourced from SMACNA Table 6-7, Section C — but as one project-wide manual pick, not auto-varied per run. Confirm the selected bracket matches the largest duct run in this project, and have the project engineer verify final support sizing before fabrication or installation.</div>
         <table class="report-table"><thead><tr><th>Item</th><th>Final (incl. allowance)</th><th>Audit detail</th></tr></thead>
@@ -998,7 +998,7 @@
           <tbody>${rowsHtml || '<tr><td colspan="7">No round duct runs entered.</td></tr>'}</tbody>
         </table>
       </div>
-      <div class="report-section">
+      <div class="report-section report-section-compact">
         <div class="report-section-title">2. Calculation Summary — By Selected Gauge</div>
         <div class="report-note">Round duct gauge is resolved per run (SMACNA Table 6-8 auto-lookup by diameter, or manual override) — grouped here by whichever gauge labels are actually in use.</div>
         <table class="report-table">
@@ -1006,13 +1006,13 @@
           <tbody>${gaugeRowsHtml || '<tr><td colspan="3">No gauge totals — enter round duct runs first.</td></tr>'}</tbody>
         </table>
       </div>
-      <div class="report-section">
+      <div class="report-section report-section-compact">
         <div class="report-section-title">3. Miscellaneous &amp; Consumables</div>
         <div class="report-note">Includes an estimated surface-area contribution from the Fittings &amp; Accessories schedule below (A-16 equivalent-length factor, ${fittingsArea.toFixed(2)} sq m before waste/contingency) — a rough approximation, not a verified SMACNA fitting-dimension calculation.</div>
         <table class="report-table"><thead><tr><th>Item</th><th>Final (incl. allowance)</th><th>Audit detail</th></tr></thead>
         <tbody>${miscFields.map(lineHtml).join("")}</tbody></table>
       </div>
-      <div class="report-section">
+      <div class="report-section report-section-compact">
         <div class="report-section-title">4. Hangers &amp; Supports</div>
         <div class="report-disclaimer">⚠ Rod diameter (A-13: ${assumptions.A13}) and trapeze angle size (A-14: ${assumptions.A14}) are sourced from SMACNA Table 6-7, Section C — but as one project-wide manual pick, not auto-varied per run. Confirm the selected bracket matches the largest duct run in this project, and have the project engineer verify final support sizing before fabrication or installation.</div>
         <table class="report-table"><thead><tr><th>Item</th><th>Final (incl. allowance)</th><th>Audit detail</th></tr></thead>
@@ -1055,13 +1055,206 @@
         ${assumptionsByTierHtml()}
       </div>
 
-      <div class="report-section">
+      <div class="report-section report-section-compact">
         <div class="report-section-title">6. References</div>
         <div class="report-note">SMACNA HVAC Duct Construction Standards, 3rd Edition (2005) | PSME Code (2012 Ed.) Part 1 &amp; 2 | ASHRAE Fundamentals 2021 (Ch. 21 — Duct Design). Verify all quantities with final construction drawings before procurement. See Section 5 above for which figures in this report are existing-app references vs. secondary-sourced guidance vs. estimating assumptions.</div>
       </div>
     `;
   }
   window.renderPrintReport = renderPrintReport;
+
+  // ---------------- Persistence (Save / Load / Clear) ----------------
+  // One centralized state object rather than scattered per-field storage.
+  // Only raw user inputs are saved — computed results (area, weight, gauge
+  // totals, etc.) are never part of the saved shape, since they're always
+  // re-derived from the inputs on load via the same recalc* functions the
+  // live UI already uses. localStorage only (no IndexedDB): the saved
+  // shape is a handful of small arrays/objects, well within localStorage's
+  // practical size limits, so the added complexity of IndexedDB isn't
+  // justified here. Fully offline — no network call of any kind.
+  const STORAGE_KEY = "smacna-takeoff-state-v1";
+
+  function gatherRectRows() {
+    return Array.from(document.querySelectorAll("#input-body tr.data-row")).map((tr) => {
+      const id = tr.dataset.id;
+      return {
+        run: pv("run-" + id), type: pv("type-" + id),
+        width: pv("w-" + id), depth: pv("d-" + id), length: pv("l-" + id),
+        gaugeOverride: pv("gaugeover-" + id)
+      };
+    });
+  }
+
+  function gatherRoundRows() {
+    return Array.from(document.querySelectorAll("#round-input-body tr.data-row")).map((tr) => {
+      const id = tr.dataset.id;
+      return {
+        run: pv("rrun-" + id), diameter: pv("rdia-" + id), length: pv("rlen-" + id),
+        qty: pv("rqty-" + id), gauge: pv("rgauge-" + id), flanges: pv("rflange-" + id)
+      };
+    });
+  }
+
+  function gatherFittings() {
+    return Array.from(document.querySelectorAll("#fittings-body tr")).map((tr) => {
+      const id = tr.id.replace("fitting-row-", "");
+      return { type: pv("fittype-" + id), size: pv("fitsize-" + id), qty: pv("fitqty-" + id) };
+    });
+  }
+
+  function showToast(message) {
+    const toast = document.getElementById("toast");
+    const msgEl = document.getElementById("toast-msg");
+    if (!toast || !msgEl) return;
+    msgEl.textContent = message;
+    toast.classList.add("toast-show");
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => toast.classList.remove("toast-show"), 3200);
+  }
+
+  function fmtSavedAt(iso) {
+    try {
+      return new Date(iso).toLocaleString(undefined, {
+        year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit"
+      });
+    } catch (e) {
+      return iso;
+    }
+  }
+
+  function updateSaveStatusLabels(savedAtIso) {
+    document.querySelectorAll("[data-save-status]").forEach((el) => {
+      if (savedAtIso) {
+        el.textContent = "Last Saved: " + fmtSavedAt(savedAtIso);
+        el.classList.add("save-status-fresh");
+      } else {
+        el.textContent = "Not saved yet this session";
+        el.classList.remove("save-status-fresh");
+      }
+    });
+  }
+
+  window.saveApplicationState = function (showFeedback) {
+    const state = {
+      version: 1,
+      savedAt: new Date().toISOString(),
+      project: {
+        project: pv("p-project"), date: pv("p-date"), ref: pv("p-ref"), prep: pv("p-prep"),
+        loc: pv("p-loc"), check: pv("p-check"), rev: pv("p-rev"), sheet: pv("p-sheet"),
+        pressureClass: pv("p-pressure-class"), designPressure: pv("p-design-pressure"),
+        sectionLength: pv("p-section-length"), ductMaterial: pv("p-duct-material")
+      },
+      assumptions,
+      ductMode,
+      rectRows: gatherRectRows(),
+      roundRows: gatherRoundRows(),
+      fittings: gatherFittings()
+    };
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      updateSaveStatusLabels(state.savedAt);
+      if (showFeedback) showToast("Project data saved successfully.");
+      return true;
+    } catch (e) {
+      console.error("Save failed:", e);
+      if (showFeedback) showToast("⚠ Save failed — your browser may be blocking local storage.");
+      return false;
+    }
+  };
+
+  function loadApplicationState() {
+    let raw;
+    try {
+      raw = localStorage.getItem(STORAGE_KEY);
+    } catch (e) {
+      return null;
+    }
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  window.clearApplicationState = function () {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (e) {}
+    updateSaveStatusLabels(null);
+  };
+
+  // Restores every raw input, then runs one full recalculation pass —
+  // calculated values are never trusted from storage, always re-derived.
+  function restoreApplicationState(state) {
+    if (!state) return false;
+    const setVal = (id, v) => {
+      const el = document.getElementById(id);
+      if (el && v != null && v !== "") el.value = v;
+    };
+
+    const p = state.project || {};
+    setVal("p-project", p.project); setVal("p-date", p.date); setVal("p-ref", p.ref);
+    setVal("p-prep", p.prep); setVal("p-loc", p.loc); setVal("p-check", p.check);
+    setVal("p-rev", p.rev); setVal("p-sheet", p.sheet);
+    setVal("p-pressure-class", p.pressureClass); setVal("p-design-pressure", p.designPressure);
+    setVal("p-section-length", p.sectionLength); setVal("p-duct-material", p.ductMaterial);
+    if (window.onPressureClassChange) window.onPressureClassChange();
+
+    if (state.assumptions) {
+      SMACNA.assumptionsMeta.forEach((a) => {
+        if (a.locked) return; // locked fields are fixed to their def — never restored/overridden
+        const saved = state.assumptions[a.field];
+        if (saved == null) return;
+        if (a.type === "dual") {
+          setVal("assump-" + a.field + "-w", saved.w);
+          setVal("assump-" + a.field + "-h", saved.h);
+        } else {
+          setVal("assump-" + a.field, saved);
+        }
+      });
+      onAssumptionChange();
+    }
+
+    window.clearAllRows();
+    (state.rectRows || []).forEach((r) => {
+      window.addRow(r.run, r.type, r.width, r.depth, r.length);
+      if (r.gaugeOverride) setVal("gaugeover-" + rowCounter, r.gaugeOverride);
+    });
+
+    window.clearAllRoundRows();
+    (state.roundRows || []).forEach((r) => {
+      window.addRoundRow(r.run, r.diameter, r.length, r.qty, r.gauge, r.flanges);
+    });
+
+    document.getElementById("fittings-body").innerHTML = "";
+    (state.fittings || []).forEach((f) => {
+      window.addFittingRow();
+      setVal("fittype-" + fittingRowCounter, f.type);
+      setVal("fitsize-" + fittingRowCounter, f.size);
+      setVal("fitqty-" + fittingRowCounter, f.qty);
+    });
+
+    if (state.ductMode) window.showDuctMode(state.ductMode);
+
+    recalcAllRows();
+    recalcAllRoundRows();
+    recalcRoundTotals();
+    renderReferenceTiers();
+    updateSaveStatusLabels(state.savedAt);
+    return true;
+  }
+
+  // Safety-net autosave — fires once right before the tab/browser closes so
+  // an accidental close after entering data still isn't a total loss. This
+  // is in addition to, never a replacement for, the explicit Save button:
+  // it never shows a toast (the page is already unloading, nobody would
+  // see it), so it never masquerades as the user's own deliberate save.
+  window.addEventListener("beforeunload", () => {
+    try {
+      window.saveApplicationState(false);
+    } catch (e) {}
+  });
 
   // ---------------- Offline indicator ----------------
   function updateOnlineStatus() {
@@ -1094,7 +1287,7 @@
     }
     updateOnlineStatus();
 
-    // ---- Init: same sample rows as the source workbook ----
+    // ---- Init ----
     renderAssumptions();
     renderFormulaRef();
     renderFormulaRefRound();
@@ -1105,13 +1298,22 @@
     renderResidentialDuctTable();
     renderConveyingVelocityTable();
     renderReferenceTiers();
-    window.addRow("SA-01", "SA", 400, 300, 10);
-    window.addRow("SA-02", "SA", 600, 400, 8);
-    window.addRow("SA-03", "SA", 900, 600, 12);
-    window.addRow("SA-04", "SA", 1200, 800, 6);
-    window.addRow("SA-05", "RA", 280, 200, 15);
-    window.addRoundRow("RD-01", 300, 5, 1, "Auto", 0);
-    window.addRoundRow("RD-02", 450, 8, 2, "Auto", 1);
+
+    // Restore a previously-saved project if one exists in this browser;
+    // otherwise fall back to the same sample rows the source workbook
+    // shipped with, as before.
+    const savedState = loadApplicationState();
+    if (savedState) {
+      restoreApplicationState(savedState);
+    } else {
+      window.addRow("SA-01", "SA", 400, 300, 10);
+      window.addRow("SA-02", "SA", 600, 400, 8);
+      window.addRow("SA-03", "SA", 900, 600, 12);
+      window.addRow("SA-04", "SA", 1200, 800, 6);
+      window.addRow("SA-05", "RA", 280, 200, 15);
+      window.addRoundRow("RD-01", 300, 5, 1, "Auto", 0);
+      window.addRoundRow("RD-02", 450, 8, 2, "Auto", 1);
+    }
 
     // ---- Splash branding: remove the moment first render is done, not on
     // a timer — this is a static local app, so that's effectively instant. ----

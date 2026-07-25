@@ -59,6 +59,8 @@
      tables above never render into the PDF. -->
 <div id="print-report" class="print-only"></div>
 
+<div id="toast" class="no-print" role="status" aria-live="polite"><span class="toast-icon">✓</span><span id="toast-msg"></span></div>
+
 <!-- ================= TAB 1 : PROJECT + ASSUMPTIONS ================= -->
 <div class="tab-content active" id="tab-0">
 
@@ -123,6 +125,11 @@
   </div>
 
   <div class="ok-box">Tip: leave these at their defaults unless your project specs, product TDS, or house rules call for a different coverage rate. Gray rows are carried over from the app's original source workbook and locked from editing; purple rows are secondary-sourced guidance you select manually — neither tier is independently verified against a primary SMACNA document in this session (see Tab 3 for the full source breakdown).</div>
+
+  <div class="save-bar no-print">
+    <button class="btn btn-save" onclick="window.saveApplicationState(true)" title="Save project information and assumptions — persists offline in this browser, survives refresh/reopen">💾 SAVE</button>
+    <span class="save-status" data-save-status>Not saved yet this session</span>
+  </div>
 </div>
 
 <!-- ================= TAB 2 : TAKEOFF CALCULATOR ================= -->
@@ -208,6 +215,11 @@
   <div class="warning-box" id="incomplete-warning" style="display:none">⚠ Rows highlighted in red are missing Width, Depth, or Length and are excluded from totals until completed.</div>
   <div class="warning-box" id="gauge-outrange-warning" style="display:none">⚠ One or more rows (marked ⚠ in the gauge columns) have a dimension exceeding SMACNA Table 6-1/6-2's documented 96" (2438mm) range. The gauge shown is extrapolated from the largest bracket, not a verified table value — use the manual gauge override for these runs.</div>
 
+  <div class="save-bar no-print">
+    <button class="btn btn-save" onclick="window.saveApplicationState(true)" title="Save all duct runs, gauge overrides, and fittings — persists offline in this browser, survives refresh/reopen">💾 SAVE</button>
+    <span class="save-status" data-save-status>Not saved yet this session</span>
+  </div>
+
   <div class="section-header"><span class="badge">2</span> SUMMARY</div>
   <div id="summary-body"></div>
   </div><!-- /rect-calc-section -->
@@ -278,6 +290,11 @@
     </div>
     <div class="warning-box" id="round-incomplete-warning" style="display:none">⚠ Rows highlighted in red are missing Diameter, Length, or Quantity and are excluded from totals until completed.</div>
     <div class="warning-box" id="round-gauge-outrange-warning" style="display:none">⚠ One or more rows (marked ⚠ in the Gauge column) have a diameter exceeding SMACNA Table 6-8's documented 84" (2134mm) range. The gauge shown is extrapolated from the largest bracket, not a verified table value — use the manual gauge override for these runs.</div>
+
+    <div class="save-bar no-print">
+      <button class="btn btn-save" onclick="window.saveApplicationState(true)" title="Save all duct runs, gauge overrides, and fittings — persists offline in this browser, survives refresh/reopen">💾 SAVE</button>
+      <span class="save-status" data-save-status>Not saved yet this session</span>
+    </div>
 
     <div class="section-header"><span class="badge">2</span> ② FITTINGS &amp; ACCESSORIES SCHEDULE (manual entry, estimated area)</div>
     <div class="report-disclaimer" style="margin:10px 0">⚠ Fitting quantities and sizes are entered manually. Their <b>surface-area contribution</b> to Insulation/Sealant/Adhesive/Duct Pins (Summary below) is an <b>estimate</b> using a simple equivalent-length approximation (assumption A-16, Tab 1) — <b>NOT</b> a verified SMACNA fitting-dimension calculation, since real fitting geometry (gore count, taper length, etc.) varies by manufacturer and isn't derivable from a straight-run diameter/length table alone. Weight and gauge per fitting are still not tracked. Verify against actual fabrication drawings before procurement.</div>
